@@ -1,0 +1,316 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-pulse-glow: pulseGlow 8s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: scale(1.05);
+  }
+}
+
+/* ==========================================================================
+   GLOBAL VIEWPORT LAYOUT & CANVAS SCENE
+   ========================================================================== */
+body {
+  margin: 0;
+  padding: 0;
+  color: #f8fafc;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(at 10% 20%, rgba(16, 185, 129, 0.22) 0px, transparent 45%),
+    radial-gradient(at 90% 80%, rgba(245, 158, 11, 0.12) 0px, transparent 50%),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.93)),
+    url('/src/assets/img/img.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+}
+
+/* Base flex framework spacing rule overrides */
+main {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   GLOBAL SITE SCROLLBARS
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}
+
+/* ==========================================================================
+   GLASSMORPHISM PATTERN CORE ENGINE
+   ========================================================================== */
+.glass-card {
+  background-color: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    0 0 50px -10px rgba(16, 185, 129, 0.05);
+  border-radius: 1.25rem;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.glass-input {
+  background-color: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  color: #f1f5f9;
+  outline: none;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
+}
+
+.glass-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  background-color: rgba(2, 6, 23, 0.85);
+}
+
+/* Custom reset rules targeting dark dropdown selections native menus */
+select.glass-input option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* ==========================================================================
+   AMAZON-STYLE FLUID LEARNING HUB ASSISTANT
+   ========================================================================== */
+
+/* Main center column anchoring layout layers safely on screen viewports */
+.hub-chat-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: calc(100vh - 140px);
+  padding: 1.5rem 1rem;
+  box-sizing: border-box;
+}
+
+/* Resizing Card Element Engine */
+.hub-chat-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 850px;
+  flex: 1 1 auto;
+  padding: 1.25rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .hub-chat-card {
+    padding: 2.25rem;
+  }
+}
+
+.hub-chat-title {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #10b981;
+  text-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
+}
+
+/* Rolling Chat Feed display panels */
+.hub-chat-feed {
+  flex: 1 1 auto;
+  height: calc(100vh - 460px);
+  /* Adjusted cleanly to give drop-downs safe screen real-estate */
+  min-height: 280px;
+  overflow-y: auto;
+  border-radius: 0.85rem;
+  background-color: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+}
+
+/* Internal Feed Custom scroll channels styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(16, 185, 129, 0.2);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.5);
+}
+
+/* Individual text feed row layers alignment boxes */
+.hub-msg-row {
+  margin-bottom: 1.25rem;
+  display: flex;
+  width: 100%;
+}
+
+.hub-msg-ai {
+  justify-content: flex-start;
+}
+
+.hub-msg-user {
+  justify-content: flex-end;
+}
+
+/* Dynamic text wrapping content bubbles */
+.hub-msg-bubble {
+  max-width: 85%;
+  border-radius: 1.15rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 640px) {
+  .hub-msg-bubble {
+    max-width: 78%;
+  }
+}
+
+.bubble-ai {
+  background-color: rgba(30, 41, 59, 0.9);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.12);
+  border-top-left-radius: 0px;
+}
+
+.bubble-user {
+  background-color: #059669;
+  color: #ffffff;
+  border-top-right-radius: 0px;
+}
+
+/* Waiting state ticker tracking */
+.hub-chat-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #f59e0b;
+  padding: 0.25rem 0;
+}
+
+/* Bottom user submission form dashboard container fields */
+.hub-chat-form {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  /* Prevents form from squishing or sliding off view limits */
+}
+
+.hub-chat-input {
+  flex-grow: 1;
+  min-width: 0;
+  /* Essential flex fix overrides browser overflow limits */
+}
+
+/* Send submission buttons */
+.hub-chat-btn {
+  border-radius: 0.75rem;
+  background-color: #059669;
+  padding: 0 1.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Anchors the button dimensions perfectly */
+}
+
+.hub-chat-btn:hover {
+  background-color: #10b981;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+}
+
+.hub-chat-btn:active {
+  transform: scale(0.97);
+}
+
+/* Loading freeze locks state changes styling rules */
+.hub-chat-btn:disabled,
+.hub-chat-input:disabled,
+select.glass-input:disabled {
+  background-color: #1e293b !important;
+  color: #475569 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: not-allowed;
+}
+
+.hub-chat-feed {
+  flex: 1 1 auto;
+  height: calc(100vh - 380px);
+  /* Clean layout spacing adjustment box */
+  min-height: 280px;
+  overflow-y: auto;
+  border-radius: 0.85rem;
+  background-color: rgba(2, 6, 23, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+}
