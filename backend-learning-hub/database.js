@@ -1,7 +1,6 @@
 const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
-// Automatically detects Render's cloud environment, otherwise uses local fallbacks
 const sequelize = new Sequelize(
   process.env.DB_NAME || "ethiopian_learning_hub",
   process.env.DB_USER || "root",
@@ -11,12 +10,13 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: false,
-    // This safely adds SSL requirements ONLY when executing live on Render cloud
     dialectOptions: process.env.DB_HOST
       ? {
           ssl: {
             require: true,
             rejectUnauthorized: false,
+            // Force the TLS layer to accept the connection protocol string
+            minVersion: "TLSv1.2",
           },
         }
       : {},
