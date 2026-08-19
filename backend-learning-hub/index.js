@@ -1,33 +1,51 @@
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
-const { DataTypes } = require("sequelize");
+const { DataTypes, Sequelize } = require("sequelize");
 const { GoogleGenAI } = require("@google/genai");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 require("dotenv").config();
 
-const sequelize = require("./database");
 const User = require("./models/User");
 const Course = require("./models/Course");
+
+// ==========================================
+// PRODUCTION CLOUD DATABASE INITIALIZATION
+// ==========================================
+const sequelize = new Sequelize(
+  process.env.DB_NAME || "defaultdb",
+  process.env.DB_USER || "avnadmin",
+  process.env.DB_PASSWORD,
+  {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 10326,
+    dialect: "mysql",
+    logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false, // CRITICAL: Allows connection to Aiven Cloud over SSL
+      },
+    },
+  },
+);
 
 const app = express();
 
 // ==========================================
 // ADAPTIVE ANTI-CORS BLOCKING HEADERS LAYER
 // ==========================================
-// This list automatically expands to accept your live Vercel URL from your environment variables.
 const allowedOrigins = [
   "http://localhost:5173",
   "http://192.168.137.1:5173",
-  process.env.FRONTEND_PRODUCTION_URL, // Your live Vercel URL goes here in production
+  process.env.FRONTEND_PRODUCTION_URL,
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allows requests from your allowed list, local development, or mobile environments
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -43,8 +61,6 @@ app.use(
 );
 
 app.use(express.json());
-
-// Expose the upload folder space dynamically to incoming client download paths
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Initialize Google Gemini Client
@@ -86,7 +102,7 @@ const fileFilterValidator = (req, file, callback) => {
 const uploadHandler = multer({
   storage: storageConfig,
   fileFilter: fileFilterValidator,
-  limits: { fileSize: 25 * 1024 * 1024 }, // Max file size limit: 25MB
+  limits: { fileSize: 25 * 1024 * 1024 },
 });
 
 // ==========================================
@@ -127,7 +143,6 @@ const authenticateJWT = (req, res, next) => {
   }
 
   try {
-    // Keeping your default mock user configuration safe for your testing environments
     req.user = { id: 1, role: "student" };
     next();
   } catch (err) {
@@ -136,10 +151,10 @@ const authenticateJWT = (req, res, next) => {
       .json({ success: false, message: "Invalid token validation" });
   }
 };
+
 // ==========================================
 // 4. CORE BACKEND API ROUTE ENDPOINTS
 // ==========================================
-
 app.get("/api/test", (req, res) => {
   res.json({ message: "Hello from your modern SQL backend server!" });
 });
@@ -210,8 +225,7 @@ app.post("/api/login", async (req, res) => {
     });
   }
 });
-
-// Create a New Course Endpoint with Mobile Multer Upload Integration Support
+// Create a New Course Endpoint
 app.post(
   "/api/courses",
   uploadHandler.single("courseFile"),
@@ -250,7 +264,7 @@ app.post(
   },
 );
 
-// Get All Courses Endpoint (With Instructor Joined via Alias)
+// Get All Courses Endpoint
 app.get("/api/courses", async (req, res) => {
   try {
     const courses = await Course.findAll({
@@ -268,7 +282,7 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-// Fetch Enrolled Student Courses Filtered List View Environment
+// Fetch Enrolled Student Courses Filtered List View
 app.get("/api/student/my-courses", authenticateJWT, async (req, res) => {
   try {
     const activeStudentId = req.user.id;
@@ -378,7 +392,7 @@ app.post("/api/copilot", async (req, res) => {
     contents.push({ role: "user", parts: [{ text: prompt }] });
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", // Updated to run on optimized engine production profiles
+      model: "gemini-2.5-flash",
       contents: contents,
       config: { systemInstruction: systemInstruction, temperature: 0.3 },
     });
