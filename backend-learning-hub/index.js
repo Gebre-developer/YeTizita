@@ -1,40 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
-const { DataTypes, Sequelize } = require("sequelize");
+const { DataTypes } = require("sequelize");
 const { GoogleGenAI } = require("@google/genai");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 require("dotenv").config();
 
+// Loads your database connection and runs the safe sequential initialization pipeline
+const sequelize = require("./database");
 const User = require("./models/User");
 const Course = require("./models/Course");
-
-// ==========================================
-// PRODUCTION CLOUD DATABASE INITIALIZATION
-// ==========================================
-const isProduction = !!process.env.DB_HOST;
-
-const sequelize = new Sequelize(
-  process.env.DB_NAME || "ethiopian_learning_hub",
-  process.env.DB_USER || "root",
-  process.env.DB_PASSWORD || "",
-  {
-    host: process.env.DB_HOST || "127.0.0.1",
-    port: process.env.DB_PORT || 3306,
-    dialect: "mysql",
-    logging: false,
-    dialectOptions: isProduction
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
-          },
-        }
-      : {},
-  },
-);
 
 const app = express();
 
@@ -65,6 +42,7 @@ app.use(
 );
 
 app.use(express.json());
+// Expose the upload folder space dynamically to incoming client download paths
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Initialize Google Gemini Client
@@ -108,25 +86,6 @@ const uploadHandler = multer({
   fileFilter: fileFilterValidator,
   limits: { fileSize: 25 * 1024 * 1024 },
 });
-
-// ==========================================
-// 2. DEFINE RELATIONAL SCHEMAS & JUNCTION TABLE
-// ==========================================
-// Define Enrollment table footprint globally so it can be safely referenced across route endpoints
-const Enrollment = sequelize.define(
-  "Enrollment",
-  {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  },
-  { timestamps: true },
-);
-
-// Establish relationships layout configurations
-User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
-Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
-
-User.belongsToMany(Course, { through: Enrollment, foreignKey: "userId" });
-Course.belongsToMany(User, { through: Enrollment, foreignKey: "courseId" });
 
 // ==========================================
 // 3. AUTHENTICATION MIDDLEWARE GATEKEEPER
@@ -231,7 +190,7 @@ app.post("/api/login", async (req, res) => {
     });
   }
 });
-// Create a New Course Endpoint
+// Create a New Course Endpoint with Mobile Multer Upload Integration Support
 app.post(
   "/api/courses",
   uploadHandler.single("courseFile"),
@@ -270,7 +229,7 @@ app.post(
   },
 );
 
-// Get All Courses Endpoint
+// Get All Courses Endpoint (With Instructor Joined via Alias)
 app.get("/api/courses", async (req, res) => {
   try {
     const courses = await Course.findAll({
@@ -288,7 +247,7 @@ app.get("/api/courses", async (req, res) => {
   }
 });
 
-// Fetch Enrolled Student Courses Filtered List View
+// Fetch Enrolled Student Courses Filtered List View Environment
 app.get("/api/student/my-courses", authenticateJWT, async (req, res) => {
   try {
     const activeStudentId = req.user.id;
@@ -347,6 +306,10 @@ app.get("/api/courses/:id", async (req, res) => {
 app.post("/api/enroll", async (req, res) => {
   try {
     const { userId, courseId } = req.body;
+
+    // We fetch the dynamic model from the sequelize tracking space safely
+    const Enrollment = sequelize.model("Enrollment");
+
     const existingEnrollment = await Enrollment.findOne({
       where: { userId, courseId },
     });
@@ -417,14 +380,8 @@ app.post("/api/copilot", async (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
-// Enforce safe database mapping deployment order: Users -> Courses -> Enrollments
-sequelize
-  .sync({ alter: true })
-  .then(() => {
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(
-        `Server executing seamlessly across network vectors on port ${PORT}`,
-      );
-    });
-  })
-  .catch((err) => console.error("Database connection failure:", err));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    `Server executing seamlessly across network vectors on port ${PORT}`,
+  );
+});
