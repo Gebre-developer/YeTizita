@@ -1,6 +1,9 @@
 const { Sequelize } = require("sequelize");
 require("dotenv").config();
 
+// Determine if we are running in the cloud or locally
+const isProduction = !!process.env.DB_HOST;
+
 const sequelize = new Sequelize(
   process.env.DB_NAME || "ethiopian_learning_hub",
   process.env.DB_USER || "root",
@@ -10,13 +13,11 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: false,
-    dialectOptions: process.env.DB_HOST
+    dialectOptions: isProduction
       ? {
           ssl: {
             require: true,
             rejectUnauthorized: false,
-            // Force the TLS layer to accept the connection protocol string
-            minVersion: "TLSv1.2",
           },
         }
       : {},
