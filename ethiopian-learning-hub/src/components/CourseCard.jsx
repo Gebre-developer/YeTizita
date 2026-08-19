@@ -25,6 +25,7 @@ const CourseCard = ({ course }) => {
           </span>
         )}
       </div>
+
       {/* Lower Details Content Panel */}
       <div className="p-5 flex flex-col flex-grow space-y-3">
         <h3 className="font-bold text-base text-white line-clamp-1 group-hover:text-amber-400 transition duration-300">{course.title}</h3>

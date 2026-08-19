@@ -21,8 +21,11 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // 2. Sent user payload to your custom XAMPP MySQL backend
-      const response = await axios.post('http://localhost:5000/api/register', {
+      // Pull dynamic production api gateway URL or fall back to localhost
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      // 2. Sent user payload to your custom dynamic backend
+      const response = await axios.post(`${baseUrl}/api/register`, {
         username: name, // Maps 'name' state to 'username' column
         email: email,
         password: password,
@@ -46,7 +49,8 @@ const Register = () => {
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
       } else {
-        setError('Could not process registration. Verify backend server connectivity.');
+        const activeEndpoint = import.meta.env.VITE_API_URL ? "production cloud services" : "local node configurations";
+        setError(`Could not process registration. Verify ${activeEndpoint} connectivity.`);
       }
     } finally {
       setLoading(false);

@@ -69,7 +69,8 @@ const CourseDetails = () => {
       })
       .catch(err => {
         console.error(err);
-        setError('Could not pull course properties from server files.');
+        const activeEndpoint = import.meta.env.VITE_API_URL ? "cloud data clusters" : "local server configurations";
+        setError(`Could not pull course properties from ${activeEndpoint}.`);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -107,7 +108,8 @@ const CourseDetails = () => {
       }
     } catch (err) {
       console.error("Client AI Stream Delivery Error:", err);
-      setLocalChatMessages([...historicalPayload, { sender: 'system', text: "Connection failed. Ensure port 5000 server instance is up." }]);
+      const activeEndpoint = import.meta.env.VITE_API_URL ? "production cloud service gateway" : "local server running on port 5000";
+      setLocalChatMessages([...historicalPayload, { sender: 'system', text: `Connection failed. Ensure the ${activeEndpoint} is responsive.` }]);
     } finally {
       setAiLoading(false);
     }

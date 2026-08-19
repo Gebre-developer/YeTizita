@@ -19,8 +19,11 @@ function AiAssistant() {
     setLoading(true);
 
     try {
-      // 2. Fire the post request payload directly to your local node proxy
-      const response = await fetch("http://localhost:5000/api/chat", {
+      // Get API Base URL dynamically from Vercel/Vite environment variables
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+      // 2. Fire the post request payload directly to your dynamic api gateway
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: userMessage }), 
@@ -42,7 +45,7 @@ function AiAssistant() {
       console.error("Frontend Crash Log Details:", error);
       setMessages((prev) => [
         ...prev, 
-        { text: "Network connection lost to Node.js proxy. Verify terminal processes are running.", isAi: true }
+        { text: "Network connection lost to backend proxy. Verify connection endpoints.", isAi: true }
       ]);
     } finally {
       setLoading(false);

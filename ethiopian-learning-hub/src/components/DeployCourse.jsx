@@ -45,7 +45,7 @@ const DeployCourse = () => {
       success: "ኮርሱ በተሳካ ሁኔታ ተለቋል!",
       error: "ኮርሱን መጫን አልተቻለም። እባክዎ ኢንተርኔትዎን ያረጋግጡ::"
     }
-  }[language];
+  }[language || 'EN'];
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -71,7 +71,8 @@ const DeployCourse = () => {
     if (courseFile) uploadData.append('courseFile', courseFile);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://192.168.137.1:5000';
+      // Replaced old network tracking local IP strings with unified dynamic fallbacks
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/courses/deploy`, {
         method: 'POST',
         body: uploadData,
@@ -85,11 +86,13 @@ const DeployCourse = () => {
         setStatus({ type: 'error', message: text.error });
       }
     } catch (err) {
+      console.error("Course deployment system log error:", err);
       setStatus({ type: 'error', message: text.error });
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="max-w-xl mx-auto my-6 px-4">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-6 sm:p-8">
@@ -114,7 +117,6 @@ const DeployCourse = () => {
             <span>{status.message}</span>
           </div>
         )}
-
         {/* Deployment Form Target Frame */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
@@ -169,6 +171,7 @@ const DeployCourse = () => {
               </select>
             </div>
           </div>
+
           {/* Input Element: Description Text Box */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{text.desc}</label>

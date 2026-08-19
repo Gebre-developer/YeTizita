@@ -9,7 +9,7 @@ const Courses = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   
-  // State management variables for your live XAMPP MySQL courses
+  // State management variables for your live cloud MySQL courses
   const [dbCourses, setDbCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,7 +52,7 @@ const Courses = () => {
         }
       } catch (err) {
         console.error("Database tracking catalog error:", err);
-        setError('Failed to pull available training modules from the local backend database.');
+        setError('Failed to pull available training modules from the cloud backend database.');
       } finally {
         setLoading(false);
       }
@@ -71,6 +71,7 @@ const Courses = () => {
                           course.description?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
   const handleSendGeminiMessage = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim() || aiLoading) return;
@@ -97,7 +98,8 @@ const Courses = () => {
       }
     } catch (err) {
       console.error("Client AI Stream Delivery Error:", err);
-      setLocalChatMessages([...historicalPayload, { sender: 'system', text: "Connection failed. Ensure port 5000 server instance is up." }]);
+      const activeEndpoint = import.meta.env.VITE_API_URL ? "production cloud backend" : "local instance (port 5000)";
+      setLocalChatMessages([...historicalPayload, { sender: 'system', text: `Connection failed. Ensure the ${activeEndpoint} is running and reachable.` }]);
     } finally {
       setAiLoading(false);
     }
@@ -126,10 +128,9 @@ const Courses = () => {
             placeholder="Search tech courses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 text-sm transition"
+            className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500/50 text-sm transition"
           />
         </div>
-
         {/* Dynamic Category Pill Selection Filters */}
         <div className="flex flex-wrap justify-center gap-3 py-2">
           {loading ? (
@@ -148,6 +149,7 @@ const Courses = () => {
             ))
           )}
         </div>
+
         {/* Catalog Main Layout Content Split Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start pt-4">
           
@@ -155,7 +157,7 @@ const Courses = () => {
           <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'lg:col-span-6' : 'lg:col-span-8'}`}>
             {loading ? (
               <div className="text-center py-12 text-emerald-400 font-bold text-sm animate-pulse">
-                Streaming live records from learning_hub schema...
+                Streaming live records from cloud learning_hub schema...
               </div>
             ) : error ? (
               <div className="text-center py-12 text-red-400 text-xs font-semibold bg-red-500/10 rounded-2xl border border-red-500/20">
