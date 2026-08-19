@@ -14,21 +14,25 @@ const Course = require("./models/Course");
 // ==========================================
 // PRODUCTION CLOUD DATABASE INITIALIZATION
 // ==========================================
+const isProduction = !!process.env.DB_HOST;
+
 const sequelize = new Sequelize(
-  process.env.DB_NAME || "defaultdb",
-  process.env.DB_USER || "avnadmin",
-  process.env.DB_PASSWORD,
+  process.env.DB_NAME || "ethiopian_learning_hub",
+  process.env.DB_USER || "root",
+  process.env.DB_PASSWORD || "",
   {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 10326,
+    host: process.env.DB_HOST || "127.0.0.1",
+    port: process.env.DB_PORT || 3306,
     dialect: "mysql",
     logging: false,
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false, // CRITICAL: Allows connection to Aiven Cloud over SSL
-      },
-    },
+    dialectOptions: isProduction
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        }
+      : {},
   },
 );
 
@@ -108,6 +112,7 @@ const uploadHandler = multer({
 // ==========================================
 // 2. DEFINE RELATIONAL SCHEMAS & JUNCTION TABLE
 // ==========================================
+// Define Enrollment table footprint globally so it can be safely referenced across route endpoints
 const Enrollment = sequelize.define(
   "Enrollment",
   {
@@ -116,6 +121,7 @@ const Enrollment = sequelize.define(
   { timestamps: true },
 );
 
+// Establish relationships layout configurations
 User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
 Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
 
@@ -411,6 +417,7 @@ app.post("/api/copilot", async (req, res) => {
 // ==========================================
 const PORT = process.env.PORT || 5000;
 
+// Enforce safe database mapping deployment order: Users -> Courses -> Enrollments
 sequelize
   .sync({ alter: true })
   .then(() => {
