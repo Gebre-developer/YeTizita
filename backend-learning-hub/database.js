@@ -1,24 +1,36 @@
 const { Sequelize } = require("sequelize");
+require("dotenv").config();
 
-// We are putting the values directly here to bypass dotenvx caching issues!
+// Automatically detects Render's cloud environment, otherwise uses local fallbacks
 const sequelize = new Sequelize(
-  "ethiopian_learning_hub", // Database Name
-  "root", // Username
-  "", // Password (Leave completely blank inside quotes)
+  process.env.DB_NAME || "ethiopian_learning_hub",
+  process.env.DB_USER || "root",
+  process.env.DB_PASSWORD || "",
   {
-    host: "127.0.0.1", // Localhost IP address
+    host: process.env.DB_HOST || "127.0.0.1",
+    port: process.env.DB_PORT || 3306,
     dialect: "mysql",
-    logging: false, // Keeps terminal clean
+    logging: false,
+    // This safely adds SSL requirements ONLY when executing live on Render cloud
+    dialectOptions: process.env.DB_HOST
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        }
+      : {},
   },
 );
 
-// Test the connection
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log("Successfully connected to the MySQL database!");
+    console.log(
+      "🚀 Connected to the MySQL database target module successfully!",
+    );
   } catch (error) {
-    console.error("Unable to connect to the database:", error);
+    console.error("❌ Unable to connect to the database environment:", error);
   }
 };
 
