@@ -1,11 +1,12 @@
 import { useState, useEffect, useContext } from 'react';
 import CourseCard from '../components/CourseCard';
-import axios from 'axios'; 
 import PageWrapper from '../components/PageWrapper';
 import { AuthContext } from '../context/AuthContext';
+// IMPORT FIXED: Targets your clean services client routing layers natively
+import { courseServices, aiServices } from '../services/api';
 
 const Courses = () => {
-  const { user, token } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   
@@ -20,20 +21,15 @@ const Courses = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Connects to your standard public catalog endpoint so everyone sees all courses
+  // Connects to your standard public catalog endpoint via proxy
   useEffect(() => {
     const fetchCatalogFromDB = async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        
-        // Fetch ALL general catalog courses from your SQL schema first
-        const response = await axios.get(`${baseUrl}/api/courses`);
+        // FIXED: Replaced raw axios with secure, abstract proxy client wrapper configuration rules
+        const result = await courseServices.getAllCourses();
 
-        if (response.data.success) {
-          // Normalize backend database objects to match the structure of your CourseCard
-          const mappedData = response.data.data.map(course => {
-            // Evaluates access permissions based on database enrollment tables flags
-            // Check if the current user ID is contained inside the course enrollments association array
+        if (result.success) {
+          const mappedData = result.data.map(course => {
             const hasAccess = course.Enrollments?.some(e => String(e.studentId) === String(user?.id)) || false;
 
             return {
@@ -44,7 +40,6 @@ const Courses = () => {
               category: course.category || 'Programming', 
               instructor: course.instructor?.username || 'Hub Instructor',
               fileUrl: course.fileUrl || null,
-              // True ONLY if the student has a verified enrollment record row in SQL
               isEnrolled: hasAccess 
             };
           });
@@ -84,22 +79,21 @@ const Courses = () => {
     setAiLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.post(`${baseUrl}/api/copilot`, {
-        prompt: userText,
-        courseContext: {
-          catalogPage: "Main Courses Discovery Hub",
-          activeFilterCategory: activeCategory
-        }
+      // FIXED: Switched backend endpoint connection routes to clean unified relative layers
+      const res = await aiServices.sendMessageToCopilot(userText, localChatMessages, {
+        catalogPage: "Main Courses Discovery Hub",
+        activeFilterCategory: activeCategory
       });
 
-      if (res.data.success) {
-        setLocalChatMessages([...historicalPayload, { sender: 'gemini', text: res.data.text }]);
+      if (res.success) {
+        setLocalChatMessages([...historicalPayload, { sender: 'gemini', text: res.text }]);
       }
     } catch (err) {
       console.error("Client AI Stream Delivery Error:", err);
-      const activeEndpoint = import.meta.env.VITE_API_URL ? "production cloud backend" : "local instance (port 5000)";
-      setLocalChatMessages([...historicalPayload, { sender: 'system', text: `Connection failed. Ensure the ${activeEndpoint} is running and reachable.` }]);
+      setLocalChatMessages([...historicalPayload, { 
+        sender: 'system', 
+        text: "Connection failed. Please ensure the backend web service on Render is fully awake and running." 
+      }]);
     } finally {
       setAiLoading(false);
     }
@@ -120,8 +114,6 @@ const Courses = () => {
   return (
     <PageWrapper>
       <div className="max-w-7xl mx-auto px-4 py-12 space-y-8 text-white relative">
-        
-        {/* Dynamic Live Catalog Interactive Search Field */}
         <div className="max-w-md mx-auto">
           <input
             type="text"

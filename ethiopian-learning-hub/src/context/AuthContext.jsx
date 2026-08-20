@@ -4,6 +4,7 @@ export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // Added state tracking for authorization headers
   const [loading, setLoading] = useState(true);
   const [enrolledCourses, setEnrolledCourses] = useState([]);
   
@@ -19,10 +20,12 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('el_hub_user');
+    const storedToken = localStorage.getItem('token'); // Read the token storage vector on boot
     const storedEnrollments = localStorage.getItem('el_hub_enrollments');
     const storedLang = localStorage.getItem('el_hub_lang');
     
     if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedToken) setToken(storedToken);
     if (storedEnrollments) setEnrolledCourses(JSON.parse(storedEnrollments));
     if (storedLang) setLanguage(storedLang);
     
@@ -30,12 +33,16 @@ export const AuthProvider = ({ children }) => {
     setUnlockedBadges(storedUser ? ['Habesha Tech Pioneer'] : []);
     setLoading(false);
   }, []);
-  // Updated login workflow function parameters to process backend payload responses securely
-  const login = (backendPayload) => {
-    // backendPayload should be the direct 'res.data.user' or the 'user' object from login response
-    // It contains: { id, username, role, email }
-    setUser(backendPayload);
-    localStorage.setItem('el_hub_user', JSON.stringify(backendPayload));
+
+  // FIXED: Accepts both user profiles and token strings directly from the login forms
+  const login = (backendUserPayload, jwtToken) => {
+    setUser(backendUserPayload);
+    setToken(jwtToken);
+    
+    localStorage.setItem('el_hub_user', JSON.stringify(backendUserPayload));
+    if (jwtToken) {
+      localStorage.setItem('token', jwtToken); // Secure token visibility for API interceptors
+    }
     
     setEnrolledCourses([]);
     setStreakCount(1);
@@ -44,6 +51,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     setEnrolledCourses([]);
     setStreakCount(0);
     setUnlockedBadges([]);
@@ -75,7 +83,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ 
-      user, login, logout, loading, enrolledCourses, enrollInCourse, toggleLessonCompletion,
+      user, token, login, logout, loading, enrolledCourses, enrollInCourse, toggleLessonCompletion,
       language, toggleLanguage, lowBandwidthMode, toggleBandwidthMode, streakCount, unlockedBadges,
       isAudioPlaying, setIsAudioPlaying, currentCareerTrack, setCurrentCareerTrack
     }}>

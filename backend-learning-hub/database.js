@@ -1,6 +1,7 @@
 const { Sequelize, DataTypes } = require("sequelize");
 require("dotenv").config();
 
+// Turn on SSL strictly if a production database host variable is detected
 const isProduction = !!process.env.DB_HOST;
 
 const sequelize = new Sequelize(
@@ -23,36 +24,34 @@ const sequelize = new Sequelize(
   },
 );
 
-// Define relations step-by-step to prevent race conditions
+// Import models immediately to ensure sync stability
+const User = require("./models/User");
+const Course = require("./models/Course");
+
+// Define Enrollment junction model synchronously
+const Enrollment = sequelize.define(
+  "Enrollment",
+  {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  },
+  { timestamps: true },
+);
+
+// FIXED: Defined relationships globally and synchronously to completely eliminate Express route race conditions
+User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
+Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
+
+User.belongsToMany(Course, { through: Enrollment, foreignKey: "userId" });
+Course.belongsToMany(User, { through: Enrollment, foreignKey: "courseId" });
+
+// Asynchronous execution layer restricted purely to schema synchronization tasks
 const initializeDatabase = async () => {
   try {
     await sequelize.authenticate();
-    console.log("🚀 Connected to the MySQL cloud infrastructure.");
+    console.log("🚀 Connected to the MySQL cloud infrastructure securely.");
 
-    // Import models explicitly inside the sync runner lifecycle
-    const User = require("./models/User");
-    const Course = require("./models/Course");
-
-    // Define Enrollment junction model dynamically
-    const Enrollment = sequelize.define(
-      "Enrollment",
-      {
-        id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-      },
-      { timestamps: true },
-    );
-
-    // 1. First, sync the Parent User Table independently
+    // Sync models in order of dependency requirements safely
     await User.sync({ alter: true });
-
-    // 2. Next, define the relationships layout safely
-    User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
-    Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
-
-    User.belongsToMany(Course, { through: Enrollment, foreignKey: "userId" });
-    Course.belongsToMany(User, { through: Enrollment, foreignKey: "courseId" });
-
-    // 3. Finally, sync Courses and Enrollment after Parent structures exist
     await Course.sync({ alter: true });
     await Enrollment.sync({ alter: true });
 

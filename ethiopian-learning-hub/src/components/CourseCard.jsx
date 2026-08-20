@@ -25,7 +25,6 @@ const CourseCard = ({ course }) => {
           </span>
         )}
       </div>
-
       {/* Lower Details Content Panel */}
       <div className="p-5 flex flex-col flex-grow space-y-3">
         <h3 className="font-bold text-base text-white line-clamp-1 group-hover:text-amber-400 transition duration-300">{course.title}</h3>
@@ -36,7 +35,8 @@ const CourseCard = ({ course }) => {
           {course.isEnrolled ? (
             course.fileUrl ? (
               <a 
-                href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${course.fileUrl}`}
+                // FIXED: Uses secure relative paths to pass static asset requests cleanly to the Vercel-Render network mesh
+                href={course.fileUrl}
                 download
                 target="_blank"
                 rel="noreferrer"
