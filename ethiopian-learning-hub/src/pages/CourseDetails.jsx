@@ -82,6 +82,7 @@ const CourseDetails = () => {
   const isEnrolled = !!enrollmentRecord;
   const isTeacher = user?.role === 'teacher';
   const currentLesson = course.lessons?.[activeLessonIndex];
+  
   const handleSendGeminiMessage = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim() || aiLoading) return;
@@ -129,7 +130,6 @@ const CourseDetails = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8 text-white relative">
-      
       {/* Return Navigation Anchor Tag Link */}
       <button 
         onClick={() => navigate('/courses')} 
@@ -169,7 +169,6 @@ const CourseDetails = () => {
           )}
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Side Workspace Block Column */}
         <div className={`space-y-8 transition-all duration-300 ease-in-out ${isExpanded ? 'lg:col-span-6' : 'lg:col-span-8'}`}>
@@ -252,27 +251,41 @@ const CourseDetails = () => {
                 {isExpanded && <button onClick={() => setIsExpanded(false)} className="text-[10px] text-slate-400 hover:text-white bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">✕ Collapse</button>}
               </div>
               
-              <div className="flex-1 overflow-y-auto space-y-2 text-xs bg-slate-950/50 p-3 rounded-xl min-h-[140px]">
+              <div className="flex-1 overflow-y-auto space-y-2 text-xs bg-slate-950/50 p-3 rounded-xl border border-slate-900/60 mb-3 custom-scrollbar">
                 {renderChatInterface()}
+                {aiLoading && (
+                  <div className="flex items-center gap-2 text-slate-500 italic p-1 animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                    <span>Thinking...</span>
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={handleSendGeminiMessage} className="mt-3 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask assistant..."
+              <form onSubmit={handleSendGeminiMessage} className="flex gap-2">
+                <input 
+                  type="text" 
                   value={copilotInput}
                   onChange={(e) => setCopilotInput(e.target.value)}
-                  disabled={aiLoading}
-                  className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs outline-none focus:border-emerald-500/50 text-white"
+                  placeholder="Ask a technical question..." 
+                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-slate-700 focus:outline-none rounded-xl px-3 py-2 text-xs placeholder-slate-600 transition"
                 />
-                <button type="submit" disabled={aiLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition">Send</button>
+                <button 
+                  type="submit" 
+                  disabled={aiLoading}
+                  className="bg-emerald-600 hover:bg-emerald-500 font-bold px-4 py-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-40"
+                >
+                  Ask
+                </button>
               </form>
             </div>
           )}
 
-          <OfflineShare courseId={course.id} />
+          {/* Offline Share Node Block P2P Utility */}
+          {(isEnrolled || isTeacher) && <OfflineShare courseId={course.id} />}
+
         </div>
       </div>
+      {error && <div className="text-center text-xs text-rose-400 font-medium bg-rose-950/20 border border-rose-900/40 p-3 rounded-xl max-w-xl mx-auto">{error}</div>}
     </div>
   );
 };

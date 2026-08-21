@@ -71,9 +71,10 @@ const DeployCourse = () => {
     if (courseFile) uploadData.append('courseFile', courseFile);
 
     try {
-      // Replaced old network tracking local IP strings with unified dynamic fallbacks
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiUrl}/api/courses/deploy`, {
+      
+      // ✅ FIXED: Changed endpoint route from /api/courses/deploy to match your backend index.js path /api/courses
+      const response = await fetch(`${apiUrl}/api/courses`, {
         method: 'POST',
         body: uploadData,
       });
@@ -117,6 +118,7 @@ const DeployCourse = () => {
             <span>{status.message}</span>
           </div>
         )}
+
         {/* Deployment Form Target Frame */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
@@ -189,49 +191,38 @@ const DeployCourse = () => {
           {/* Interactive Mobile Touch Targeted Drag/Drop File Matrix */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">{text.fileLabel}</label>
-            <div className="relative border-2 border-dashed border-slate-800 hover:border-amber-500/40 bg-slate-950 rounded-xl p-4 transition text-center cursor-pointer">
+            <div className="relative border-2 border-dashed border-slate-800 hover:border-amber-500/40 bg-slate-950 rounded-xl p-4 transition text-center group cursor-pointer">
               <input 
                 type="file" 
-                accept=".pdf,.zip,.rar"
                 onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                accept=".pdf,.zip,.rar"
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
               />
-              <div className="flex flex-col items-center justify-center space-y-1">
-                <UploadCloud className="w-8 h-8 text-slate-500" />
-                {courseFile ? (
-                  <div className="text-sm font-semibold text-emerald-400 flex items-center gap-1.5 max-w-full px-2 overflow-hidden">
-                    <FileText className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{courseFile.name}</span>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-xs font-medium text-slate-300">
-                      {language === 'EN' ? 'Tap to choose file' : 'ፋይል ለመምረጥ እዚህ ይጫኑ'}
-                    </span>
-                    <span className="text-[10px] text-slate-500">{text.fileHint}</span>
-                  </>
-                )}
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <UploadCloud className="w-8 h-8 text-slate-500 group-hover:text-amber-400 transition" />
+                <p className="text-xs text-slate-300 font-medium">
+                  {courseFile ? courseFile.name : (language === 'EN' ? "Drag and drop or click to choose file" : "ፋይሉን እዚህ ይጎትቱ ወይም ይጫኑ")}
+                </p>
+                <p className="text-[10px] text-slate-500">{text.fileHint}</p>
               </div>
             </div>
           </div>
 
-          {/* Submit Trigger Actions System Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-slate-950 font-bold py-3.5 px-4 rounded-xl text-sm tracking-wide shadow-lg active:scale-[0.99] transition flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>{text.publishing}</span>
-                </>
-              ) : (
-                <span>{text.submitBtn}</span>
-              )}
-            </button>
-          </div>
+          {/* Submit Trigger Actions Controller */}
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 disabled:from-slate-800 disabled:to-slate-800 text-slate-950 disabled:text-slate-500 font-bold py-3.5 px-4 rounded-xl text-sm transition shadow-lg shadow-amber-950/10 active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{text.publishing}</span>
+              </>
+            ) : (
+              <span>{text.submitBtn}</span>
+            )}
+          </button>
 
         </form>
       </div>

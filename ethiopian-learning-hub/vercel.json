@@ -1,13 +1,12 @@
 {
-    "rewrites": [
-      {
-        "source": "/api/:path*",
-        "destination": "https://onrender.com*"
-      },
-      {
-        "source": "/(.*)",
-        "destination": "/index.html"
-      }
-    ]
-  }
-  
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://localhost:5000/api/:path*"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

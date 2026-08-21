@@ -39,7 +39,7 @@ const Navbar = () => {
       logout: "ውጣ",
       days: "ቀናት"
     }
-  }[language];
+  }[language || 'EN']; // Added default fallback safety parameter
 
   const handleMobileNavigation = (path) => {
     setMobileMenuOpen(false);
@@ -96,7 +96,6 @@ const Navbar = () => {
               <Link to="/about" className={`px-3 py-2 rounded-xl text-sm transition ${isActive('/about') ? 'text-amber-400 font-semibold' : 'text-slate-300 hover:text-white'}`}>{text.about}</Link>
               <Link to="/contact" className={`px-3 py-2 rounded-xl text-sm transition ${isActive('/contact') ? 'text-amber-400 font-semibold' : 'text-slate-300 hover:text-white'}`}>{text.contact}</Link>
             </div>
-
             {/* Authenticated Dashboard Actions Control Container */}
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-800">
@@ -142,6 +141,7 @@ const Navbar = () => {
 
         </div>
       </div>
+
       {/* MOBILE CONTENT TRAYS SYSTEM (DRAWER DRAWS DOWN) */}
       <div className={`md:hidden transition-all duration-300 ease-in-out border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl ${mobileMenuOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible overflow-hidden'}`}>
         <div className="px-4 pt-2 pb-6 space-y-4">

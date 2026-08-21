@@ -18,18 +18,22 @@ export const AuthProvider = ({ children }) => {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [currentCareerTrack, setCurrentCareerTrack] = useState('Fintech Developer');
 
+  // Load persistent configurations instantly on framework startup initialization 
   useEffect(() => {
     const storedUser = localStorage.getItem('el_hub_user');
     const storedToken = localStorage.getItem('token'); // Read the token storage vector on boot
     const storedEnrollments = localStorage.getItem('el_hub_enrollments');
     const storedLang = localStorage.getItem('el_hub_lang');
+    const storedLowData = localStorage.getItem('el_hub_low_data');
+    const storedStreak = localStorage.getItem('el_hub_streak');
     
     if (storedUser) setUser(JSON.parse(storedUser));
     if (storedToken) setToken(storedToken);
     if (storedEnrollments) setEnrolledCourses(JSON.parse(storedEnrollments));
     if (storedLang) setLanguage(storedLang);
+    if (storedLowData) setLowBandwidthMode(storedLowData === 'true');
     
-    setStreakCount(storedUser ? 5 : 0); 
+    setStreakCount(storedStreak ? parseInt(storedStreak, 10) : (storedUser ? 5 : 0)); 
     setUnlockedBadges(storedUser ? ['Habesha Tech Pioneer'] : []);
     setLoading(false);
   }, []);
@@ -46,6 +50,7 @@ export const AuthProvider = ({ children }) => {
     
     setEnrolledCourses([]);
     setStreakCount(1);
+    localStorage.setItem('el_hub_streak', '1');
     setUnlockedBadges(['Habesha Tech Pioneer']);
   };
 
@@ -55,18 +60,37 @@ export const AuthProvider = ({ children }) => {
     setEnrolledCourses([]);
     setStreakCount(0);
     setUnlockedBadges([]);
-    localStorage.clear();
+    localStorage.clear(); // Safely clears out session headers completely
   };
 
-  const toggleLanguage = () => setLanguage(l => l === 'EN' ? 'AM' : 'EN');
-  const toggleBandwidthMode = () => setLowBandwidthMode(b => !b);
+  // ✅ FIXED: Saves language selections dynamically inside browser disk hardware storage
+  const toggleLanguage = () => {
+    setLanguage((l) => {
+      const targetLang = l === 'EN' ? 'AM' : 'EN';
+      localStorage.setItem('el_hub_lang', targetLang);
+      return targetLang;
+    });
+  };
 
+  // ✅ FIXED: Saves bandwidth parameters persistently inside browser memory structures
+  const toggleBandwidthMode = () => {
+    setLowBandwidthMode((b) => {
+      const nextState = !b;
+      localStorage.setItem('el_hub_low_data', String(nextState));
+      return nextState;
+    });
+  };
+
+  // ✅ FIXED: Keeps your local student enrolment metrics logged inside persistent arrays
   const enrollInCourse = (courseId) => {
     if (!enrolledCourses.some(item => item.courseId === courseId)) {
-      setEnrolledCourses([...enrolledCourses, { courseId, completedLessons: [] }]);
+      const updatedEnrollments = [...enrolledCourses, { courseId, completedLessons: [] }];
+      setEnrolledCourses(updatedEnrollments);
+      localStorage.setItem('el_hub_enrollments', JSON.stringify(updatedEnrollments));
     }
   };
 
+  // ✅ FIXED: Syncs lesson completion ticks to localStorage for persistent checkmarks
   const toggleLessonCompletion = (courseId, lessonId) => {
     const updated = enrolledCourses.map(course => {
       if (course.courseId === courseId) {
@@ -79,6 +103,7 @@ export const AuthProvider = ({ children }) => {
       return course;
     });
     setEnrolledCourses(updated);
+    localStorage.setItem('el_hub_enrollments', JSON.stringify(updated));
   };
 
   return (

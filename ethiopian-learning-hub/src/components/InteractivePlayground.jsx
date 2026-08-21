@@ -15,7 +15,6 @@ const InteractivePlayground = () => {
       try {
         let capturedLogs = [];
         
-        // Advanced Custom Logger to support objects, arrays, and multiple parameters cleanly
         const customLog = (...args) => {
           const formattedLine = args
             .map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg))
@@ -23,7 +22,6 @@ const InteractivePlayground = () => {
           capturedLogs.push(formattedLine);
         };
         
-        // Map multiple console methods to our interceptor for comprehensive logging
         const mockConsole = {
           log: customLog,
           info: customLog,
@@ -31,8 +29,10 @@ const InteractivePlayground = () => {
           error: customLog
         };
         
-        // Execute code evaluation safely within the mock environment wrapper
-        const runSandbox = new Function('console', code);
+        // ✅ OPTIMIZED: Wrapped in an IIFE context block string to cleanly encapsulate student variable declarations
+        const secureCodeString = `(function() { ${code} \n})();`;
+        
+        const runSandbox = new Function('console', secureCodeString);
         runSandbox(mockConsole);
         
         if (capturedLogs.length === 0) {

@@ -22,23 +22,28 @@ function AiAssistant() {
       // Get API Base URL dynamically from Vercel/Vite environment variables
       const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-      // 2. Fire the post request payload directly to your dynamic api gateway
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      // 2. ✅ FIXED: Changed the destination route pathway from /api/chat to /api/copilot
+      const response = await fetch(`${API_BASE_URL}/api/copilot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: userMessage }), 
+        // ✅ FIXED: Structured payload parameters matching backend index.js expectations
+        body: JSON.stringify({ 
+          prompt: userMessage,
+          chatHistory: [],
+          courseContext: {}
+        }), 
       });
 
       const data = await response.json();
       console.log("Frontend received response object payload:", data);
       
       // 3. Drill down into the custom text key parameter safely
-      if (response.ok && data.text) {
+      if (response.ok && data.success && data.text) {
         setMessages((prev) => [...prev, { text: data.text, isAi: true }]);
       } else {
         setMessages((prev) => [
           ...prev, 
-          { text: `Error: ${data.error || 'Invalid API layout response structure'}`, isAi: true }
+          { text: `Error: ${data.message || 'Invalid API layout response structure'}`, isAi: true }
         ]);
       }
     } catch (error) {

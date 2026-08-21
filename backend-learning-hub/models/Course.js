@@ -33,7 +33,8 @@ const Course = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true, // Holds the path to uploaded PDFs/ZIPs once teachers submit them
     },
-    teacherId: {
+    instructorId: {
+      // ALIGNED: Swapped teacherId to instructorId to match your index.js routes perfectly
       type: DataTypes.INTEGER,
       allowNull: false, // Tracks exactly which educator deployed the module
     },
