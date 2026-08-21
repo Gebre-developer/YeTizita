@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { aiServices } from '../services/api'; // ✅ Connected directly to your newly fixed service file!
 import InteractivePlayground from '../components/InteractivePlayground';
 import OfflineShare from '../components/OfflineShare'; 
 import { Lock, Unlock, Download, ArrowLeft, Loader2, PlayCircle, Award, CheckCircle, Zap } from 'lucide-react';
@@ -49,7 +50,7 @@ const CourseDetails = () => {
   }[language || 'EN'];
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://onrender.com';
     axios.get(`${baseUrl}/api/courses/${id}`)
       .then(res => {
         if (res.data.success) {
@@ -69,8 +70,7 @@ const CourseDetails = () => {
       })
       .catch(err => {
         console.error(err);
-        const activeEndpoint = import.meta.env.VITE_API_URL ? "cloud data clusters" : "local server configurations";
-        setError(`Could not pull course properties from ${activeEndpoint}.`);
+        setError("Could not pull course properties from active data clusters.");
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -90,27 +90,28 @@ const CourseDetails = () => {
     const userText = copilotInput;
     setCopilotInput('');
     
-    const historicalPayload = [...localChatMessages, { sender: 'user', text: userText }];
-    setLocalChatMessages(historicalPayload);
+    // ✅ Saves active state array layers to prevent state-race mismatches
+    const updatedHistory = [...localChatMessages, { sender: 'user', text: userText }];
+    setLocalChatMessages(updatedHistory);
     setAiLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.post(`${baseUrl}/api/copilot`, {
-        prompt: userText,
-        courseContext: {
+      // ✅ Now cleanly calling your newly created backend wrapper with full multi-turn chat history context!
+      const data = await aiServices.sendMessageToCopilot(
+        userText,
+        updatedHistory,
+        {
           courseTitle: course.title,
           activeLessonTitle: currentLesson?.title || ""
         }
-      });
+      );
 
-      if (res.data.success) {
-        setLocalChatMessages([...historicalPayload, { sender: 'gemini', text: res.data.text }]);
+      if (data.success) {
+        setLocalChatMessages([...updatedHistory, { sender: 'gemini', text: data.text }]);
       }
     } catch (err) {
       console.error("Client AI Stream Delivery Error:", err);
-      const activeEndpoint = import.meta.env.VITE_API_URL ? "production cloud service gateway" : "local server running on port 5000";
-      setLocalChatMessages([...historicalPayload, { sender: 'system', text: `Connection failed. Ensure the ${activeEndpoint} is responsive.` }]);
+      setLocalChatMessages([...updatedHistory, { sender: 'system', text: "Connection failed. Your request timed out or the AI pipeline is unreachable." }]);
     } finally {
       setAiLoading(false);
     }
@@ -130,7 +131,6 @@ const CourseDetails = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8 text-white relative">
-      {/* Return Navigation Anchor Tag Link */}
       <button 
         onClick={() => navigate('/courses')} 
         className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider transition bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800"
@@ -143,13 +143,11 @@ const CourseDetails = () => {
         <span>🎯 Target Profile: <strong className="text-amber-400">{currentCareerTrack || "Full-Stack Engineer"}</strong></span>
       </div>
 
-      {/* Main Feature Highlight Header Block */}
       <div className="bg-gradient-to-br from-slate-900 to-emerald-950 p-8 rounded-3xl border border-slate-800 shadow-xl relative">
         <span className="bg-emerald-600 text-white text-[10px] px-3 py-1 font-bold uppercase rounded-full">{course.category}</span>
         <h1 className="text-3xl font-black mt-4 mb-4">{course.title}</h1>
         <p className="text-slate-400 text-sm max-w-3xl">{course.description}</p>
         
-        {/* Adaptive Authorization Button Toggles */}
         <div className="mt-6 flex flex-wrap gap-3">
           {isTeacher ? (
             <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
@@ -164,34 +162,28 @@ const CourseDetails = () => {
               onClick={() => user ? enrollInCourse(course.id) : navigate('/login')} 
               className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider hover:brightness-110 active:scale-[0.99] transition shadow-lg"
             >
-              Enroll In Course
+              Enroll In Module Course
             </button>
           )}
         </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Side Workspace Block Column */}
-        <div className={`space-y-8 transition-all duration-300 ease-in-out ${isExpanded ? 'lg:col-span-6' : 'lg:col-span-8'}`}>
-          {(isEnrolled || isTeacher) && currentLesson ? (
-            <>
-              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-6">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-                  <h2 className="text-lg font-bold">{currentLesson.title}</h2>
-                  <div className="flex gap-2">
-                    <button onClick={() => { setIsAudioPlaying(!isAudioPlaying); setAudioStatusText(isAudioPlaying ? 'Listen' : '🔊 Playing'); }} className="px-3 py-2 text-xs rounded-xl font-bold bg-slate-950 border border-slate-800">{audioStatusText}</button>
-                    {!isTeacher && (
-                      <button onClick={() => toggleLessonCompletion(course.id, currentLesson.id)} className="px-4 py-2 bg-emerald-600 text-xs font-bold rounded-xl">{enrollmentRecord?.completedLessons?.includes(currentLesson.id) ? '✅ Completed' : 'Complete'}</button>
-                    )}
-                  </div>
-                </div>
-                <div className="text-slate-300 text-sm bg-slate-950/40 p-6 rounded-2xl border border-slate-900 leading-relaxed font-light">{currentLesson.content}</div>
-              </div>
-              <InteractivePlayground />
-            </>
-          ) : <div className="bg-slate-900 p-12 rounded-3xl border border-slate-800 text-center text-slate-400 text-sm">Please enroll to access workspace blocks and learning files.</div>}
+
+      {/* Grid Layout Setup Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+              {currentLesson ? currentLesson.title : "Select a Lesson"}
+            </h2>
+            <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-900">
+              {currentLesson ? currentLesson.content : "Please choose a lesson from the module course registry index sidebar directory to load data contents."}
+            </p>
+          </div>
+          <InteractivePlayground defaultCode="// Write script logic here to verify output parameters..." />
         </div>
-        {/* Right Side Control Section Sidebar Column */}
-        <div className={`space-y-6 transition-all duration-300 ease-in-out ${isExpanded ? 'lg:col-span-6' : 'lg:col-span-4'}`}>
+        {/* Sidebar Controls Directory Column Layout */}
+        <div className="space-y-6">
           
           {/* Module Index Navigation Directory */}
           <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4">
@@ -223,7 +215,7 @@ const CourseDetails = () => {
             {(isEnrolled || isTeacher) ? (
               course.fileUrl ? (
                 <a 
-                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${course.fileUrl}`}
+                  href={`${import.meta.env.VITE_API_URL || 'https://onrender.com'}${course.fileUrl}`}
                   download
                   target="_blank"
                   rel="noreferrer"

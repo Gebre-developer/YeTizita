@@ -1,13 +1,12 @@
 import axios from "axios";
 
-// Dynamically target local development port or production proxy layers
 const getBaseURL = () => {
-  // If running locally in Vite dev mode, hit your local backend port directly
   if (import.meta.env.DEV) {
     return "http://localhost:5000";
   }
-  // When built and deployed live on Vercel, leave empty to use vercel.json proxies
-  return "";
+  // ⚡ CRITICAL FIX: Since your backend is hosted on Render, you should return your Render URL here for production,
+  // instead of an empty string, unless you are explicitly proxying through vercel.json.
+  return "https://yetizita-backend.onrender.com";
 };
 
 const api = axios.create({
@@ -15,7 +14,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Existing course data requests
 export const courseServices = {
   getAllCourses: async () => {
     const response = await api.get("/api/courses");
@@ -23,7 +21,6 @@ export const courseServices = {
   },
 };
 
-// AI processing services for your Gemini Assistant and Courses page
 export const aiServices = {
   getAIRecommendations: async (userIdOrContext) => {
     const response = await api.post("/api/ai/recommendations", {
@@ -31,10 +28,21 @@ export const aiServices = {
     });
     return response.data;
   },
-  // Handles chat assistant messages
+
+  // 🔄 Keep this for backwards compatibility if used elsewhere
   sendMessage: async (message) => {
     const response = await api.post("/api/ai/chat", { message });
     return response.data;
+  },
+
+  // ✅ ADD THIS NEW FUNCTION TO MATCH YOUR BACKEND CODE AND COURSES.JSX
+  sendMessageToCopilot: async (prompt, chatHistory, courseContext) => {
+    const response = await api.post("/api/copilot", {
+      prompt,
+      chatHistory,
+      courseContext,
+    });
+    return response.data; // This returns the object with your response text
   },
 };
 
