@@ -1,32 +1,40 @@
 const jwt = require("jsonwebtoken");
+const JWT_SECRET =
+  process.env.JWT_SECRET || "ethiopian_learning_hub_secret_key_123!";
 
-// Verify if user is logged in
-exports.authenticateJWT = (req, res, next) => {
+const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader)
-    return res.status(401).json({ message: "No token provided" });
 
-  // Splits "Bearer <token>" string cleanly into an array schema configuration setup
-  const tokenParts = authHeader.split(" ");
-  const actualToken = tokenParts[1]; // Extract the token string safely at index position 1
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "Access Denied: Missing or malformed token header",
+    });
+  }
 
-  if (!actualToken)
-    return res.status(401).json({ message: "Malformed authorization token" });
+  const token = authHeader.split(" ")[1];
 
-  jwt.verify(actualToken, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ message: "Invalid token" });
-    req.user = decoded; // Contains id and role parameters safely passed into downstream queries
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded; // Sets token user context data to req.user { id, role }
     next();
-  });
+  } catch (err) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Invalid or expired session token" });
+  }
 };
-// Verify if user has the correct role
-exports.authorizeRoles = (...allowedRoles) => {
+
+const authorizeRoles = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res
-        .status(403)
-        .json({ message: "Forbidden: You do not have permission" });
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Your profile role (${req.user?.role || "Guest"}) does not have permission.`,
+      });
     }
     next();
   };
 };
+
+module.exports = { authenticateJWT, authorizeRoles };

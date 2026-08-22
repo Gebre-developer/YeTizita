@@ -1,30 +1,32 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../database");
 
-const User = sequelize.define(
-  "User",
+const Lesson = sequelize.define(
+  "Lesson",
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    username: {
+    title: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
+    content: {
+      type: DataTypes.TEXT,
       allowNull: false,
     },
-    role: {
-      type: DataTypes.ENUM("student", "instructor", "admin"),
-      defaultValue: "student",
+    videoUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1, // Handles display ordering (Lesson 1, Lesson 2, etc.)
+    },
+    courseId: {
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
   },
@@ -33,4 +35,4 @@ const User = sequelize.define(
   },
 );
 
-module.exports = User;
+module.exports = Lesson;

@@ -10,7 +10,6 @@ const Enrollment = sequelize.define(
       primaryKey: true,
     },
     userId: {
-      // ALIGNED: Swapped studentId to userId to match your index.js routes perfectly
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -20,7 +19,7 @@ const Enrollment = sequelize.define(
     },
     completedLessons: {
       type: DataTypes.JSON,
-      defaultValue: [],
+      defaultValue: [], // Stores completed lesson IDs directly in an array
     },
   },
   {
@@ -28,7 +27,7 @@ const Enrollment = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["userId", "courseId"], // Prevents duplicate enrollments securely
+        fields: ["userId", "courseId"], // Blocks duplicate enrollment rows securely
       },
     ],
   },

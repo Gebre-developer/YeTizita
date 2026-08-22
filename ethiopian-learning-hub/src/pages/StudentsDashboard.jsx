@@ -1,28 +1,40 @@
+// src/pages/StudentsDashboard.jsx - PART 1
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import axios from 'axios'; // 1. Swapped mockData for Axios
+import axios from 'axios';
 
-const Dashboard = () => {
-  const { user, enrolledCourses = [] } = useContext(AuthContext);
+// RENAMED COMPONENT: Updated layout handle specifically to StudentsDashboard
+const StudentsDashboard = () => {
+  // Destructure global user context properties
+  const { user } = useContext(AuthContext);
   
-  // 2. Added local state to hold live database records
-  const [dbCourses, setDbCourses] = useState([]);
+  // Local state arrays holding live database rows parsed from your Neon cluster
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Gemini Assistant State Variables
+  // Google Gemini Workspace State Management
   const [copilotInput, setCopilotInput] = useState('');
   const [localChatMessages, setLocalChatMessages] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 3. Automatically fetch MySQL entries when the dashboard mounts
+  // 🔄 Automatically query the student's personal tracks array on mount
   useEffect(() => {
-    const fetchLiveTracks = async () => {
+    const fetchStudentWorkspaceData = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/courses');
+        const token = localStorage.getItem('token');
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+        // Dispatches request directly to your authenticated enrollment router endpoint
+        const response = await axios.get(`${baseUrl}/api/student/my-courses`, {
+          headers: {
+            Authorization: `Bearer ${token}` // Securely passes active token headers
+          }
+        });
+
         if (response.data.success) {
-          setDbCourses(response.data.data);
+          setEnrolledCourses(response.data.data);
         }
       } catch (err) {
         console.error("Error connecting to live course backend:", err);
@@ -31,24 +43,24 @@ const Dashboard = () => {
       }
     };
 
-    fetchLiveTracks();
+    fetchStudentWorkspaceData();
   }, []);
 
-  // 4. Map the student's enrollments against your real MySQL courses
-  const activeModules = (enrolledCourses || [])
-    .map(eRecord => {
-      if (!eRecord || !eRecord.courseId) return null;
-      // Looks through your dynamic MySQL records instead of mock static files
-      const courseMatch = dbCourses.find(c => c.id === Number(eRecord.courseId));
-      if (!courseMatch) return null;
-      
-      const totalCount = courseMatch.lessons?.length || 0;
-      const completedCount = eRecord.completedLessons?.length || 0;
-      const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  // Compute live analytical data blocks from the response records array
+  const activeModules = (enrolledCourses || []).map(course => {
+    const totalCount = course.lessons?.length || 0;
+    
+    // In our enrollment router map, the completion tracking array is appended inline
+    const completedCount = course.completedLessons?.length || 0;
+    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-      return { ...courseMatch, completedCount, totalCount, percentage };
-    })
-    .filter(Boolean);
+    return { 
+      ...course, 
+      completedCount, 
+      totalCount, 
+      percentage 
+    };
+  });
 
   const handleSendGeminiMessage = async (e) => {
     e.preventDefault();
@@ -62,8 +74,11 @@ const Dashboard = () => {
     setAiLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/copilot", {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      const res = await axios.post(`${baseUrl}/api/copilot`, {
         prompt: userText,
+        chatHistory: historicalPayload,
         courseContext: {
           dashboardPage: "Student Overview Workspace Analytics",
           activeModulesCount: activeModules.length
@@ -92,6 +107,7 @@ const Dashboard = () => {
       </div>
     ));
   };
+  // src/pages/StudentsDashboard.jsx - PART 2
   return (
     <div className="max-w-7xl mx-auto px-4 py-12 space-y-10 text-white relative">
       
@@ -120,13 +136,13 @@ const Dashboard = () => {
         <div className="glass-card p-6 rounded-2xl border border-white/5 shadow-sm">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Completed Lessons</p>
           <p className="text-3xl font-black text-white mt-2">
-            {enrolledCourses.reduce((acc, c) => acc + (c?.completedLessons?.length || 0), 0)}
+            {loading ? '...' : activeModules.reduce((acc, c) => acc + c.completedCount, 0)}
           </p>
         </div>
         <div className="glass-card p-6 rounded-2xl border border-white/5 shadow-sm">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Certificates Earned</p>
           <p className="text-3xl font-black text-amber-500 mt-2">
-            {activeModules.filter(m => m.percentage === 100).length}
+            {loading ? '...' : activeModules.filter(m => m.percentage === 100).length}
           </p>
         </div>
       </div>
@@ -149,7 +165,7 @@ const Dashboard = () => {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs bg-slate-800 text-slate-300 font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
-                        {module.User?.username || "Hub Instructor"}
+                        {module.instructor?.username || "Hub Instructor"}
                       </span>
                       <span className="text-xs font-bold text-emerald-400">{module.percentage}% Done</span>
                     </div>
@@ -223,4 +239,5 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+// EXPORT REALIGNED: Export matches the file identifier token precisely
+export default StudentsDashboard;

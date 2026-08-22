@@ -2,12 +2,13 @@ const express = require("express");
 const router = express.Router();
 const Enrollment = require("../models/Enrollment");
 const Course = require("../models/Course");
+const User = require("../models/User");
 const {
   authenticateJWT,
   authorizeRoles,
 } = require("../middleware/authMiddleware");
 
-// POST Endpoint: Enroll a student into a specific course program
+// POST: Enroll a student into a specific course
 router.post(
   "/courses/:id/enroll",
   authenticateJWT,
@@ -15,63 +16,57 @@ router.post(
   async (req, res) => {
     try {
       const courseId = req.params.id;
-      const studentId = req.user.id; // Pulled securely from your authenticated token payload!
+      const userId = req.user.id;
 
-      // Verify course row target exists in database schema
       const courseExists = await Course.findByPk(courseId);
-      if (!courseExists)
+      if (!courseExists) {
         return res
           .status(404)
           .json({ success: false, message: "Course profile not found" });
+      }
 
-      // Ensure the student isn't already assigned to an enrollment row record
       const alreadyEnrolled = await Enrollment.findOne({
-        where: { studentId, courseId },
+        where: { userId, courseId },
       });
-      if (alreadyEnrolled)
+      if (alreadyEnrolled) {
         return res.status(400).json({
           success: false,
           message: "You are already registered in this course.",
         });
+      }
 
-      // Create a new enrollment entry in MySQL database tables
-      await Enrollment.create({ studentId, courseId });
-
-      return res.status(201).json({
-        success: true,
-        message:
-          "Enrollment registration processing pipeline completed successfully.",
-      });
+      await Enrollment.create({ userId, courseId });
+      return res
+        .status(201)
+        .json({ success: true, message: "Enrollment successful." });
     } catch (error) {
-      console.error("Enrollment pipeline registration failure:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server environment schema execution error.",
-      });
+      console.error("Enrollment pipeline failure:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
   },
 );
-// GET Endpoint: Fetch only courses the current student user has actively enrolled into
+
+// GET: Fetch courses the current student user has actively enrolled into
 router.get(
   "/student/my-courses",
   authenticateJWT,
   authorizeRoles("student"),
   async (req, res) => {
     try {
-      const studentId = req.user.id;
+      const userId = req.user.id;
 
-      // Fetch all enrollment row keys mapping to the logging student profile identifier parameters
       const studentEnrollments = await Enrollment.findAll({
-        where: { studentId },
+        where: { userId },
       });
       const enrolledIds = studentEnrollments.map((e) => e.courseId);
 
-      // Retrieve full information data blocks for matching items collection rows
       const activeCourses = await Course.findAll({
         where: { id: enrolledIds },
+        include: [{ model: User, as: "instructor", attributes: ["username"] }],
       });
 
-      // Append accessibility configurations flag parameters mapping cleanly to expected frontend layouts
       const catalogData = activeCourses.map((course) => {
         const matchRecord = studentEnrollments.find(
           (e) => e.courseId === course.id,
@@ -83,16 +78,57 @@ router.get(
         };
       });
 
-      return res.status(200).json({
-        success: true,
-        data: catalogData,
-      });
+      return res.status(200).json({ success: true, data: catalogData });
     } catch (error) {
       console.error("Fetch authorized catalog streams error:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Internal server architecture database error.",
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
+    }
+  },
+);
+
+// POST: Mark a lesson as complete to track learner progress
+router.post(
+  "/courses/:courseId/lessons/:lessonId/complete",
+  authenticateJWT,
+  authorizeRoles("student"),
+  async (req, res) => {
+    try {
+      const { courseId, lessonId } = req.params;
+      const userId = req.user.id;
+
+      const enrollment = await Enrollment.findOne({
+        where: { userId, courseId },
       });
+      if (!enrollment) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Enrollment record not found." });
+      }
+
+      let completedList = Array.isArray(enrollment.completedLessons)
+        ? enrollment.completedLessons
+        : JSON.parse(enrollment.completedLessons || "[]");
+
+      const numericLessonId = Number(lessonId);
+
+      if (!completedList.includes(numericLessonId)) {
+        completedList.push(numericLessonId);
+        enrollment.completedLessons = completedList;
+        await enrollment.save();
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Lesson progress saved successfully.",
+        data: enrollment.completedLessons,
+      });
+    } catch (error) {
+      console.error("Progress tracking failure:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
   },
 );

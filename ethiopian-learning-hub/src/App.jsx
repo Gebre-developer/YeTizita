@@ -1,6 +1,8 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+// src/App.jsx
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import { useContext } from 'react';
 
 // Components
 import Navbar from './components/Navbar';
@@ -8,7 +10,6 @@ import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import InstructorRoute from './components/InstructorRoute';
 import PageWrapper from './components/PageWrapper';
-// ✅ FIXED: Single correct import pointing directly to the components folder
 import DeployCourse from './components/DeployCourse';
 import AiAssistant from './components/AiAssistant';
 
@@ -18,14 +19,31 @@ import Courses from './pages/Courses';
 import CourseDetails from './pages/CourseDetails';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 import MyCourses from './pages/MyCourses';
 import Profile from './pages/Profile';
 import About from './pages/About';
 import Contact from './pages/Contact';
 
+// 🌐 SYSTEM INTEGRATION: Imported your distinct role dashboard pages cleanly
+import StudentsDashboard from './pages/StudentsDashboard'; 
+import TeacherDashboard from './pages/TeacherDashboard'; 
+
 // Import your custom asset to guarantee Vite packs it cleanly
 import hubBackgroundImg from './assets/img/img.png';
+
+/**
+ * 👥 DYNAMIC WORKBENCH RESOLVER
+ * Maps a single endpoint route (/dashboard) to completely different UI pages 
+ * based on user privileges fetched live from your Neon PostgreSQL database tables.
+ */
+function DashboardRoleResolver() {
+  const { user } = useContext(AuthContext);
+
+  if (user?.role === 'instructor' || user?.role === 'teacher') {
+    return <TeacherDashboard />;
+  }
+  return <StudentsDashboard />;
+}
 
 /**
  * AnimatedRoutes handles the Framer Motion page transition layer sequence.
@@ -45,10 +63,17 @@ function AnimatedRoutes() {
         <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
         <Route path="/ai-assistant" element={<PageWrapper><AiAssistant /></PageWrapper>} />
         
-        {/* Protected Student Routes */}
+        {/* 👥 Protected Student Routes */}
         <Route 
           path="/dashboard" 
-          element={<ProtectedRoute><PageWrapper><Dashboard /></PageWrapper></ProtectedRoute>} 
+          element={
+            <ProtectedRoute>
+              <PageWrapper>
+                {/* 🛡️ RESOLVER FIX: Dynamically routes teachers to TeacherDashboard or students to StudentsDashboard */}
+                <DashboardRoleResolver />
+              </PageWrapper>
+            </ProtectedRoute>
+          } 
         />
         <Route 
           path="/my-courses" 
@@ -64,6 +89,9 @@ function AnimatedRoutes() {
           path="/deploy-course" 
           element={<InstructorRoute><PageWrapper><DeployCourse /></PageWrapper></InstructorRoute>} 
         />
+
+        {/* Fallback Catch-All Route */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>
   );
@@ -95,11 +123,15 @@ function App() {
         {/* Global application interface nodes */}
         <div className="flex flex-col min-h-screen relative z-10">
           <Navbar />
-          <main className="flex-grow">
+          <div className="flex-grow">
             <AnimatedRoutes />
-          </main>
+          </div>
           <Footer />
         </div>
+
+        {/* 🛠️ ARCHITECTURE RECOVERY FIX: 
+            Removed the statically placed <CreateCourse /> from the bottom of the screen.
+            Instructors can now manage and create content cleanly inside their private <TeacherDashboard /> view instead! */}
 
       </AuthProvider>
     </BrowserRouter>

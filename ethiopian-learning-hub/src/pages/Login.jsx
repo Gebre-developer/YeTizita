@@ -1,7 +1,8 @@
+// src/pages/Login.jsx
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios'; // 1. Implemented Axios for network processing
+import axios from 'axios'; 
 import { Eye, EyeOff } from 'lucide-react'; 
 import authSideImage from '../assets/img/img.png';
 
@@ -11,7 +12,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); 
   const [error, setError] = useState(''); 
   const [loading, setLoading] = useState(false); 
-  const { login } = useContext(AuthContext);
+  
+  // FIXED: Destructured loginUser instead of login to match our global context brain file perfectly
+  const { loginUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,27 +23,27 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Pull dynamic production api gateway URL or fall back to localhost
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-      // 2. Dispatch credentials packet payload down to dynamic Express login path
       const response = await axios.post(`${baseUrl}/api/login`, {
         email: email,
         password: password
       });
 
       if (response.data.success) {
-        // Extract database tracking payload fields returned back from MySQL
-        const userData = response.data.data;
+        // FIXED: Matched payload properties to reflect your updated Express backend controller format
+        const token = response.data.token;
+        const userData = response.data.user; 
         
         const verifiedUser = { 
-          name: userData.username, // Translates DB layout format back to context parameters
-          email: userData.email, 
+          id: userData.id,
+          name: userData.username, 
           role: userData.role 
         };
         
-        login(verifiedUser); // Save profile values state inside UI environment
-        navigate('/dashboard'); // Push user onto protected dashboard page
+        // Pass both token and processed user values down to the context layer
+        loginUser(token, verifiedUser); 
+        navigate('/dashboard'); 
       }
     } catch (err) {
       console.error(err);
@@ -115,9 +118,10 @@ const Login = () => {
             </button>
           </form>
 
+          {/* FIXED: Swapped '/register' link tracking pointer to '/signup' to align with App.jsx routes map */}
           <p className="text-center md:text-left text-sm text-slate-400 border-t border-slate-900 pt-6 mt-6">
             New to the network?{' '}
-            <Link to="/register" className="text-amber-400 font-bold hover:underline">
+            <Link to="/signup" className="text-amber-400 font-bold hover:underline">
               Create an Account
             </Link>
           </p>

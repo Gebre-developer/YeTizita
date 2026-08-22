@@ -1,36 +1,34 @@
-import { useParams, useNavigate } from 'react-router-dom';
+// src/pages/CourseDetails.jsx - PART 1
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { aiServices } from '../services/api'; // ✅ Connected directly to your newly fixed service file!
 import InteractivePlayground from '../components/InteractivePlayground';
-import OfflineShare from '../components/OfflineShare'; 
-import { Lock, Unlock, Download, ArrowLeft, Loader2, PlayCircle, Award, CheckCircle, Zap } from 'lucide-react';
+import OfflineShare from '../components/OfflineShare';
+import { Lock, Unlock, Download, ArrowLeft, Loader2, PlayCircle, Award, CheckCircle } from 'lucide-react';
 
 const CourseDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { 
-    user, enrolledCourses, enrollInCourse, toggleLessonCompletion, unlockedBadges,
-    isAudioPlaying, setIsAudioPlaying, currentCareerTrack, language 
-  } = useContext(AuthContext);
-  
+  const { user, currentCareerTrack, language } = useContext(AuthContext);
+
+  // Core Data State Layers
+  const [course, setCourse] = useState(null);
+  const [enrollmentRecord, setEnrollmentRecord] = useState(null);
   const [activeLessonIndex, setActiveLessonIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Day 6 AI Assistant State Variables
   const [copilotInput, setCopilotInput] = useState('');
   const [localChatMessages, setLocalChatMessages] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
-  const [audioStatusText, setAudioStatusText] = useState('Listen to Audio Explanation');
-  const [course, setCourse] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  // Layout expansion state engine tracking parameters
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Amharic and English translations optimized for administrative clarity
   const text = {
     EN: {
-      back: "Back to Courses",
+      back: "Back to Dashboard",
       materialsTitle: "Course Syllabus & Study Materials",
       downloadBtn: "Download Materials",
       lockedFiles: "Enroll in this course to gain file access privileges.",
@@ -39,7 +37,7 @@ const CourseDetails = () => {
       lessonsHeader: "Module Course Lessons"
     },
     AM: {
-      back: "ወደ ኮርሶች ይመለሱ",
+      back: "ወደ ዳሽቦርድ ይመለሱ",
       materialsTitle: "የኮርሱ ማስተማሪያ ፋይሎች",
       downloadBtn: "ማስተማሪያ ፋይል አውርድ",
       lockedFiles: "የትምህርት ፋይሎችን ለማግኘት እባክዎ አስቀድመው ይመዝገቡ::",
@@ -49,69 +47,120 @@ const CourseDetails = () => {
     }
   }[language || 'EN'];
 
-  useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'https://onrender.com';
-    axios.get(`${baseUrl}/api/courses/${id}`)
-      .then(res => {
-        if (res.data.success) {
-          const d = res.data.data;
-          setCourse({
-            id: String(d.id), 
-            title: d.title, 
-            description: d.description, 
-            category: d.category || 'Programming',
-            fileUrl: d.fileUrl || null,
-            lessons: d.lessons || [
-              { id: "L1", title: "Unit Introduction & Architecture", content: "Welcome! Master layout components, logic lifecycles, and database interactions." },
-              { id: "L2", title: "Environmental Configurations", content: "Learn to secure application states using environmental string schemas." }
-            ]
-          });
+  // 🔄 Automatically fetch real-time syllabus structure and tracking arrays on mount
+  const fetchWorkspaceInformation = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const courseResponse = await axios.get(`${baseUrl}/api/courses/${id}`);
+      const studentCoursesRes = await axios.get(`${baseUrl}/api/student/my-courses`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (courseResponse.data.success) {
+        const d = courseResponse.data.data;
+        setCourse({
+          id: String(d.id),
+          title: d.title,
+          description: d.description,
+          category: d.category || 'Programming',
+          fileUrl: d.fileUrl || null,
+          lessons: d.lessons || []
+        });
+      }
+
+      if (studentCoursesRes.data.success) {
+        const match = studentCoursesRes.data.data.find(c => String(c.id) === String(id));
+        if (match) {
+          setEnrollmentRecord(match);
         }
-      })
-      .catch(err => {
-        console.error(err);
-        setError("Could not pull course properties from active data clusters.");
-      })
-      .finally(() => setLoading(false));
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Could not pull course properties from active data clusters.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) fetchWorkspaceInformation();
   }, [id]);
+  // src/pages/CourseDetails.jsx - PART 2
+  // Action Handler: Enrollment Pipeline Execution
+  const handleEnrollClick = async () => {
+    if (!user) return navigate('/login');
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  if (loading) return <div className="py-20 text-center text-emerald-400 font-bold animate-pulse text-sm">Streaming course blueprint...</div>;
-  if (!course) return <div className="py-20 text-center text-white"><p>Course Missing</p><button onClick={() => navigate('/courses')} className="mt-4 bg-emerald-700 text-white px-6 py-2 rounded-xl text-xs">Return</button></div>;
+      const response = await axios.post(`${baseUrl}/api/courses/${id}/enroll`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-  const enrollmentRecord = enrolledCourses?.find(e => String(e.courseId) === course.id);
-  const isEnrolled = !!enrollmentRecord;
-  const isTeacher = user?.role === 'teacher';
-  const currentLesson = course.lessons?.[activeLessonIndex];
-  
+      if (response.data.success) {
+        alert("Enrolled successfully into the track!");
+        fetchWorkspaceInformation(); 
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Enrollment processing failure.");
+    }
+  };
+
+  // Day 5 Action Handler: Save lesson progress to the database
+  const handleMarkLessonComplete = async (lessonId) => {
+    if (progressLoading) return;
+    setProgressLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await axios.post(
+        `${baseUrl}/api/courses/${id}/lessons/${lessonId}/complete`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        fetchWorkspaceInformation(); 
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
+  // Day 6 Action Handler: Supercharge the Gemini AI Tutor with active lesson context
   const handleSendGeminiMessage = async (e) => {
     e.preventDefault();
     if (!copilotInput.trim() || aiLoading) return;
 
     const userText = copilotInput;
     setCopilotInput('');
-    
-    // ✅ Saves active state array layers to prevent state-race mismatches
+
     const updatedHistory = [...localChatMessages, { sender: 'user', text: userText }];
     setLocalChatMessages(updatedHistory);
     setAiLoading(true);
 
     try {
-      // ✅ Now cleanly calling your newly created backend wrapper with full multi-turn chat history context!
-      const data = await aiServices.sendMessageToCopilot(
-        userText,
-        updatedHistory,
-        {
-          courseTitle: course.title,
-          activeLessonTitle: currentLesson?.title || ""
-        }
-      );
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      const response = await axios.post(`${baseUrl}/api/copilot`, {
+        prompt: userText,
+        chatHistory: updatedHistory,
+        courseContext: { title: course.title, category: course.category },
+        currentActiveLesson: course.lessons?.[activeLessonIndex] // Passes active lesson text context directly!
+      });
 
-      if (data.success) {
-        setLocalChatMessages([...updatedHistory, { sender: 'gemini', text: data.text }]);
+      if (response.data.success) {
+        setLocalChatMessages([...updatedHistory, { sender: 'gemini', text: response.data.text }]);
       }
     } catch (err) {
       console.error("Client AI Stream Delivery Error:", err);
-      setLocalChatMessages([...updatedHistory, { sender: 'system', text: "Connection failed. Your request timed out or the AI pipeline is unreachable." }]);
+      setLocalChatMessages([...updatedHistory, { sender: 'system', text: "Connection failed. The AI pipeline is unreachable." }]);
     } finally {
       setAiLoading(false);
     }
@@ -129,11 +178,18 @@ const CourseDetails = () => {
     ));
   };
 
+  if (loading) return <div className="py-20 text-center text-emerald-400 font-bold animate-pulse text-sm">Streaming course blueprint...</div>;
+  if (!course) return <div className="py-20 text-center text-white"><p>Course Missing</p><button onClick={() => navigate('/dashboard')} className="mt-4 bg-emerald-700 text-white px-6 py-2 rounded-xl text-xs">Return</button></div>;
+
+  const isEnrolled = !!enrollmentRecord;
+  const isTeacher = user?.role === 'instructor' || user?.role === 'teacher';
+  const currentLesson = course.lessons?.[activeLessonIndex];
+  // src/pages/CourseDetails.jsx - PART 3
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 space-y-8 text-white relative">
-      <button 
-        onClick={() => navigate('/courses')} 
-        className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider transition bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800"
+      <button
+        onClick={() => navigate('/dashboard')}
+        className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider transition bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800 cursor-pointer"
       >
         <ArrowLeft className="w-4 h-4 text-amber-400" />
         {text.back}
@@ -147,7 +203,7 @@ const CourseDetails = () => {
         <span className="bg-emerald-600 text-white text-[10px] px-3 py-1 font-bold uppercase rounded-full">{course.category}</span>
         <h1 className="text-3xl font-black mt-4 mb-4">{course.title}</h1>
         <p className="text-slate-400 text-sm max-w-3xl">{course.description}</p>
-        
+
         <div className="mt-6 flex flex-wrap gap-3">
           {isTeacher ? (
             <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider">
@@ -158,9 +214,9 @@ const CourseDetails = () => {
               <CheckCircle className="w-4 h-4" /> Enrolled & Unlocked
             </div>
           ) : (
-            <button 
-              onClick={() => user ? enrollInCourse(course.id) : navigate('/login')} 
-              className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider hover:brightness-110 active:scale-[0.99] transition shadow-lg"
+            <button
+              onClick={handleEnrollClick}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider hover:brightness-110 active:scale-[0.99] transition shadow-lg cursor-pointer"
             >
               Enroll In Module Course
             </button>
@@ -168,58 +224,66 @@ const CourseDetails = () => {
         </div>
       </div>
 
-      {/* Grid Layout Setup Container */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-4">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-              {currentLesson ? currentLesson.title : "Select a Lesson"}
-            </h2>
-            <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-900">
-              {currentLesson ? currentLesson.content : "Please choose a lesson from the module course registry index sidebar directory to load data contents."}
+            <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-3">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+                {currentLesson ? currentLesson.title : "Select a Lesson"}
+              </h2>
+              {isEnrolled && currentLesson && (
+                <button
+                  disabled={progressLoading || enrollmentRecord?.completedLessons?.includes(Number(currentLesson.id))}
+                  onClick={() => handleMarkLessonComplete(currentLesson.id)}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-slate-950 font-black px-3 py-1.5 rounded-lg text-[10px] uppercase tracking-wider transition ml-auto md:ml-0 cursor-pointer"
+                >
+                  {progressLoading ? "Saving..." : enrollmentRecord?.completedLessons?.includes(Number(currentLesson.id)) ? "Completed ✓" : "Mark as Completed"}
+                </button>
+              )}
+            </div>
+            <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-900 whitespace-pre-wrap">
+              {currentLesson ? currentLesson.content : "Please choose a lesson from the directory context sidebar to view contents."}
             </p>
           </div>
           <InteractivePlayground defaultCode="// Write script logic here to verify output parameters..." />
         </div>
-        {/* Sidebar Controls Directory Column Layout */}
+
         <div className="space-y-6">
-          
-          {/* Module Index Navigation Directory */}
           <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <PlayCircle className="w-4 h-4 text-amber-400" /> {text.lessonsHeader}
             </h3>
             <div className="space-y-2">
-              {course.lessons?.map((lesson, idx) => (
-                <button 
-                  key={lesson.id} 
-                  disabled={!isEnrolled && !isTeacher} 
-                  onClick={() => setActiveLessonIndex(idx)} 
-                  className={`w-full text-left p-3 rounded-xl text-xs flex justify-between border transition duration-200 ${(!isEnrolled && !isTeacher) ? 'opacity-40 cursor-not-allowed' : idx === activeLessonIndex ? 'bg-emerald-600/10 text-emerald-400 border-emerald-500/30' : 'bg-slate-950/40 text-slate-400 border-slate-900 hover:border-slate-800'}`}
-                >
-                  <span className="truncate pr-2">{idx + 1}. {lesson.title}</span>
-                  {enrollmentRecord?.completedLessons?.includes(lesson.id) && <span className="text-emerald-400 font-bold">✓</span>}
-                </button>
-              ))}
+              {course.lessons && course.lessons.length > 0 ? (
+                course.lessons.map((lesson, idx) => (
+                  <button
+                    key={lesson.id}
+                    disabled={!isEnrolled && !isTeacher}
+                    onClick={() => setActiveLessonIndex(idx)}
+                    className={`w-full text-left p-3 rounded-xl text-xs flex justify-between border transition duration-200 ${(!isEnrolled && !isTeacher) ? 'opacity-40 cursor-not-allowed' : idx === activeLessonIndex ? 'bg-emerald-600/10 text-emerald-400 border-emerald-500/30' : 'bg-slate-950/40 text-slate-400 border-slate-900 hover:border-slate-800'}`}
+                  >
+                    <span className="truncate pr-2">{idx + 1}. {lesson.title}</span>
+                    {enrollmentRecord?.completedLessons?.includes(Number(lesson.id)) && <span className="text-emerald-400 font-bold">✓</span>}
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500 italic text-center py-2">No chapters uploaded to this course directory yet.</p>
+              )}
             </div>
           </div>
 
-          {/* Secure Content File Asset Storage Downloads Cabinet Panel */}
           <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-3.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               {(isEnrolled || isTeacher) ? <Unlock className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-slate-600" />}
               {text.materialsTitle}
             </span>
-            
             {(isEnrolled || isTeacher) ? (
               course.fileUrl ? (
-                <a 
-                  href={`${import.meta.env.VITE_API_URL || 'https://onrender.com'}${course.fileUrl}`}
-                  download
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full bg-slate-950 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 text-emerald-400 font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 active:scale-[0.98] shadow-md shadow-slate-950"
+                <a
+                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${course.fileUrl}`}
+                  download target="_blank" rel="noreferrer"
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 text-emerald-400 font-bold py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 active:scale-[0.98] shadow-md shadow-slate-950"
                 >
                   <Download className="w-4 h-4" />
                   <span>{text.downloadBtn}</span>
@@ -234,15 +298,13 @@ const CourseDetails = () => {
             )}
           </div>
 
-          {/* Copilot Assistant Interface Box Core Structure */}
           {(isEnrolled || isTeacher) && (
             <div className={`bg-slate-900 p-5 rounded-3xl border border-slate-800 flex flex-col transition-all duration-300 ease-in-out ${isExpanded ? 'h-[440px]' : 'h-[340px]'}`}>
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Google Gemini Assistant</h3>
-                {!isExpanded && <button onClick={() => setIsExpanded(true)} className="text-[10px] text-slate-400 hover:text-white bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">⛶ Expand</button>}
-                {isExpanded && <button onClick={() => setIsExpanded(false)} className="text-[10px] text-slate-400 hover:text-white bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">✕ Collapse</button>}
+                {!isExpanded && <button onClick={() => setIsExpanded(true)} className="text-[10px] text-slate-400 hover:text-white bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 cursor-pointer">⛶ Expand</button>}
+                {isExpanded && <button onClick={() => setIsExpanded(false)} className="text-[10px] text-slate-400 hover:text-white bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 cursor-pointer">✕ Collapse</button>}
               </div>
-              
               <div className="flex-1 overflow-y-auto space-y-2 text-xs bg-slate-950/50 p-3 rounded-xl border border-slate-900/60 mb-3 custom-scrollbar">
                 {renderChatInterface()}
                 {aiLoading && (
@@ -252,19 +314,16 @@ const CourseDetails = () => {
                   </div>
                 )}
               </div>
-
               <form onSubmit={handleSendGeminiMessage} className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={copilotInput}
+                <input
+                  type="text" value={copilotInput}
                   onChange={(e) => setCopilotInput(e.target.value)}
-                  placeholder="Ask a technical question..." 
-                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-slate-700 focus:outline-none rounded-xl px-3 py-2 text-xs placeholder-slate-600 transition"
+                  placeholder="Ask a technical question..."
+                  className="flex-1 bg-slate-950 border border-slate-800 focus:border-slate-700 focus:outline-none rounded-xl px-3 py-2 text-xs placeholder-slate-600 transition text-slate-200"
                 />
-                <button 
-                  type="submit" 
-                  disabled={aiLoading}
-                  className="bg-emerald-600 hover:bg-emerald-500 font-bold px-4 py-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-40"
+                <button
+                  type="submit" disabled={aiLoading || !copilotInput.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-500 font-bold px-4 py-2 rounded-xl text-xs transition active:scale-95 disabled:opacity-40 text-slate-950 cursor-pointer"
                 >
                   Ask
                 </button>
@@ -272,9 +331,7 @@ const CourseDetails = () => {
             </div>
           )}
 
-          {/* Offline Share Node Block P2P Utility */}
           {(isEnrolled || isTeacher) && <OfflineShare courseId={course.id} />}
-
         </div>
       </div>
       {error && <div className="text-center text-xs text-rose-400 font-medium bg-rose-950/20 border border-rose-900/40 p-3 rounded-xl max-w-xl mx-auto">{error}</div>}
