@@ -2,6 +2,9 @@
 import { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+// 🛠️ FRONTEND CORS FIX: Instructs Axios to safely pass secure credentials automatically
+axios.defaults.withCredentials = true;
+
 export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
