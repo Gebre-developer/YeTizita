@@ -40,7 +40,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://vercel.app", // 🛠️ PRODUCTION FIX: Explicitly whitelisted your live Vercel domain name
+  "https://vercel.app", // ✨ CORS PRODUCTION FIX: Whitelisted your exact frontend domain
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
@@ -92,7 +92,6 @@ const uploadHandler = multer({
       : cb(new Error("Invalid file type.")),
   limits: { fileSize: 25 * 1024 * 1024 },
 });
-
 // --- MOUNT MODULAR API ROUTERS ---
 const authRouter = require("./routes/authRoutes");
 const enrollmentRouter = require("./routes/enrollmentRoutes");
@@ -104,6 +103,7 @@ app.use("/api", enrollmentRouter);
 app.get("/api/health", (req, res) =>
   res.json({ success: true, status: "healthy" }),
 );
+
 // GET: Fetch Public Course Catalog Directory
 app.get("/api/courses", async (req, res) => {
   try {
@@ -182,10 +182,11 @@ app.post(
       const course = await Course.findOne({
         where: { id: courseId, instructorId: req.user.id },
       });
-      if (!course)
+      if (!course) {
         return res
           .status(403)
           .json({ success: false, message: "Unauthorized course constraint." });
+      }
 
       const lesson = await Lesson.create({ ...req.body, courseId });
       res.status(201).json({ success: true, data: lesson });
@@ -259,7 +260,7 @@ const startServer = async () => {
       "🚀 Connected to the Neon PostgreSQL database cluster securely.",
     );
 
-    // 🛠️ HOSTING ENVIRONMENT FIX: Forces dynamic scaling safety configs securely on Render deployment environments
+    // Forces dynamic scaling safety configs securely on Render deployment environments
     const isProduction =
       process.env.NODE_ENV === "production" || process.env.RENDER === "true";
     const shouldAlter = !isProduction;
@@ -272,8 +273,7 @@ const startServer = async () => {
       console.log(`Server executing cleanly on port ${PORT}`);
 
       // Auto pinging tool to protect Render containers from cold-starting sleeps
-      const selfEndpoint =
-        process.env.BACKEND_PRODUCTION_URL || "https://onrender.com";
+      const selfEndpoint = process.env.BACKEND_PRODUCTION_URL;
       if (selfEndpoint) {
         setInterval(() => {
           fetch(`${selfEndpoint}/api/health`).catch(() => {});
