@@ -4,9 +4,8 @@ const getBaseURL = () => {
   if (import.meta.env.DEV) {
     return "http://localhost:5000";
   }
-  // ⚡ CRITICAL FIX: Since your backend is hosted on Render, you should return your Render URL here for production,
-  // instead of an empty string, unless you are explicitly proxying through vercel.json.
-  return "https://yetizita-backend.onrender.com";
+  // 🎯 PRODUCTION URL FIX: Updated to match your exact live Render web service domain address
+  return "https://yetizita.onrender.com";
 };
 
 const api = axios.create({
@@ -35,7 +34,7 @@ export const aiServices = {
     return response.data;
   },
 
-  // ✅ ADD THIS NEW FUNCTION TO MATCH YOUR BACKEND CODE AND COURSES.JSX
+  // ✅ AI COPILOT ROUTE ROUTING LAYER Alignment
   sendMessageToCopilot: async (prompt, chatHistory, courseContext) => {
     const response = await api.post("/api/copilot", {
       prompt,
