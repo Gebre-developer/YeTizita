@@ -5,7 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 
-// 🌐 STANDARD GEMINI SDK: Replaced old cloud-dependent library to fix credentials error
+// 🌐 STANDARD GEMINI SDK
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Centralized database configuration instance
@@ -42,11 +42,11 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://vercel.app",
+  "https://vercel.app", // Fixed Production Whitelist Target
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
-// CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE
+// 🛠️ CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE (Ensures OPTIONS requests return 200 OK)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
@@ -61,12 +61,14 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
+  // If the browser is sending a preflight check, kill it immediately with a successful 200 status
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
   next();
 });
 
+// Apply standard Express Cors fallback setup safely underneath our custom interceptor
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -217,7 +219,7 @@ app.post(
   },
 );
 
-// POST: AI Copilot with Live Lesson Context
+// ✨ THE COPIOT CODE ROUTE IS NOW EXACTLY WHERE IT BELONGS IN YOUR SERVER ROUTING PIPELINE:
 app.post("/api/copilot", async (req, res) => {
   try {
     const { prompt, chatHistory, courseContext, currentActiveLesson } =
@@ -227,7 +229,7 @@ app.post("/api/copilot", async (req, res) => {
         .status(400)
         .json({ success: false, message: "Prompt missing" });
 
-    // Structure conversation elements cleanly into array states for the standard package runtime
+    // Structure the conversation history correctly for the standard SDK
     const contents = [];
     if (chatHistory?.length > 0) {
       chatHistory.forEach((m) => {
@@ -260,7 +262,7 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    // Initialize the standard generation model pipeline correctly
+    // Call the Standard SDK Model cleanly
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       systemInstruction: systemPromptInstruction,

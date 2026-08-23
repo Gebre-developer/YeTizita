@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+// 🛠️ REPAIR FIX: Imports the pre-configured aiServices object from your custom api.js file
+import { aiServices } from '../api'; 
 
-function AiAssistant() {
+function AiAssistant({ courseContext, currentActiveLesson }) {
   const [messages, setMessages] = useState([
     { text: "Hello! Ask me any coding question or request a review test challenge.", isAi: true }
   ]);
@@ -14,31 +16,29 @@ function AiAssistant() {
     const userMessage = input;
     setInput("");
     
-    // 1. Add user message to UI chat feed
+    // 1. Add user message to UI chat feed instantly
     setMessages((prev) => [...prev, { text: userMessage, isAi: false }]);
     setLoading(true);
 
     try {
-      // Get API Base URL dynamically from Vercel/Vite environment variables
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      // Convert state messages into history structured payloads for Gemini schema mappings
+      const structuredHistory = messages.slice(1).map(msg => ({
+        sender: msg.isAi ? 'gemini' : 'user',
+        text: msg.text
+      }));
 
-      // 2. ✅ FIXED: Changed the destination route pathway from /api/chat to /api/copilot
-      const response = await fetch(`${API_BASE_URL}/api/copilot`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // ✅ FIXED: Structured payload parameters matching backend index.js expectations
-        body: JSON.stringify({ 
-          prompt: userMessage,
-          chatHistory: [],
-          courseContext: {}
-        }), 
-      });
+      // 2. ✅ FIXED: Calling your pre-configured service method cleanly!
+      const data = await aiServices.sendMessageToCopilot(
+        userMessage,
+        structuredHistory,
+        courseContext || {},
+        currentActiveLesson || {}
+      );
 
-      const data = await response.json();
       console.log("Frontend received response object payload:", data);
       
-      // 3. Drill down into the custom text key parameter safely
-      if (response.ok && data.success && data.text) {
+      // 3. Drill down into custom response elements securely
+      if (data && data.success && data.text) {
         setMessages((prev) => [...prev, { text: data.text, isAi: true }]);
       } else {
         setMessages((prev) => [
@@ -50,7 +50,7 @@ function AiAssistant() {
       console.error("Frontend Crash Log Details:", error);
       setMessages((prev) => [
         ...prev, 
-        { text: "Network connection lost to backend proxy. Verify connection endpoints.", isAi: true }
+        { text: "Failed to communicate with AI Assistant. Verify backend service status.", isAi: true }
       ]);
     } finally {
       setLoading(false);
