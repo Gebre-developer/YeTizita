@@ -1,7 +1,8 @@
+// src/pages/Register.jsx
 import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import axios from 'axios'; // 1. Swapped Firebase for Axios
+import axios from 'axios'; 
 import { Eye, EyeOff } from 'lucide-react'; 
 import authSideImage from '../assets/img/img.png';
 
@@ -12,7 +13,9 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false); 
   const [error, setError] = useState(''); 
   const [loading, setLoading] = useState(false); 
-  const { login } = useContext(AuthContext);
+  
+  // FIXED: Destructured loginUser instead of login to match your global AuthContext architecture
+  const { loginUser } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleFormSubmission = async (e) => {
@@ -21,31 +24,33 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Pull dynamic production api gateway URL or fall back to localhost
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-      // 2. Sent user payload to your custom dynamic backend
       const response = await axios.post(`${baseUrl}/api/register`, {
-        username: name, // Maps 'name' state to 'username' column
+        username: name, 
         email: email,
         password: password,
         role: 'student'
       });
 
       if (response.data.success) {
-        // Create matching local state token representation 
+        // FIXED: Extracted token and mapped user keys exactly like your Login.jsx file setup
+        const token = response.data.token;
+        const userData = response.data.user || {}; 
+        
         const createdProfile = { 
+          id: userData.id,
           name: name, 
           email: email, 
-          role: 'student' 
+          role: userData.role || 'student' 
         };
         
-        login(createdProfile); // Syncs state with your AuthContext
-        navigate('/dashboard'); // Routes user forward
+        // FIXED: Dispatched both parameters down into your central context system
+        loginUser(token, createdProfile); 
+        navigate('/dashboard'); 
       }
     } catch (err) {
       console.error(err);
-      // Catch custom error messages sent by your Express server blocks
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
       } else {
@@ -130,6 +135,7 @@ const Register = () => {
             </button>
           </form>
 
+          {/* FIXED: Keeps sign in destination route fully functional */}
           <p className="text-center md:text-left text-sm text-slate-400 border-t border-slate-900 pt-6 mt-6">
             Already registered inside the hub?{' '}
             <Link to="/login" className="text-amber-400 font-bold hover:underline">

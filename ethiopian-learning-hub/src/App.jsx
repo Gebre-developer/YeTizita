@@ -58,7 +58,10 @@ function AnimatedRoutes() {
         <Route path="/courses" element={<PageWrapper><Courses /></PageWrapper>} />
         <Route path="/courses/:id" element={<PageWrapper><CourseDetails /></PageWrapper>} />
         <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
-        <Route path="/register" element={<PageWrapper><Register /></PageWrapper>} />
+        
+        {/* 🛠️ NAVIGATION FIX: Changed path from '/register' to '/signup' to perfectly match Navbar buttons */}
+        <Route path="/signup" element={<PageWrapper><Register /></PageWrapper>} />
+        
         <Route path="/about" element={<PageWrapper><About /></PageWrapper>} />
         <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
         <Route path="/ai-assistant" element={<PageWrapper><AiAssistant /></PageWrapper>} />
