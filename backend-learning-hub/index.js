@@ -40,6 +40,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
+  "https://vercel.app", // 🛠️ PRODUCTION FIX: Explicitly whitelisted your live Vercel domain name
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
@@ -100,11 +101,9 @@ app.use("/api", authRouter);
 app.use("/api", enrollmentRouter);
 
 // --- CORE SYSTEM ROUTES ---
-
 app.get("/api/health", (req, res) =>
   res.json({ success: true, status: "healthy" }),
 );
-
 // GET: Fetch Public Course Catalog Directory
 app.get("/api/courses", async (req, res) => {
   try {
@@ -196,7 +195,7 @@ app.post(
   },
 );
 
-// POST: Day 6 AI Copilot with Live Lesson Context
+// POST: AI Copilot with Live Lesson Context
 app.post("/api/copilot", async (req, res) => {
   try {
     const { prompt, chatHistory, courseContext, currentActiveLesson } =
@@ -260,7 +259,11 @@ const startServer = async () => {
       "🚀 Connected to the Neon PostgreSQL database cluster securely.",
     );
 
-    const shouldAlter = process.env.NODE_ENV !== "production";
+    // 🛠️ HOSTING ENVIRONMENT FIX: Forces dynamic scaling safety configs securely on Render deployment environments
+    const isProduction =
+      process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+    const shouldAlter = !isProduction;
+
     await sequelize.sync({ alter: shouldAlter });
     console.log(`📊 Schema tables synchronized! Alter status: ${shouldAlter}`);
 
@@ -268,12 +271,13 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server executing cleanly on port ${PORT}`);
 
-      if (process.env.BACKEND_PRODUCTION_URL) {
+      // Auto pinging tool to protect Render containers from cold-starting sleeps
+      const selfEndpoint =
+        process.env.BACKEND_PRODUCTION_URL || "https://onrender.com";
+      if (selfEndpoint) {
         setInterval(() => {
-          fetch(`${process.env.BACKEND_PRODUCTION_URL}/api/health`).catch(
-            () => {},
-          );
-        }, 840000);
+          fetch(`${selfEndpoint}/api/health`).catch(() => {});
+        }, 840000); // Trigger every 14 minutes
       }
     });
   } catch (err) {
