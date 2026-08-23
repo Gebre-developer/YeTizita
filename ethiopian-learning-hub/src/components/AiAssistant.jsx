@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-// 🛠️ FULLSTACK CLIENT ROUTING FIX: Bridges communication over preconfigured axis layer channels
-import { aiServices } from '../api'; 
+// 🎯 FAILSAFE IMPORT FIX: Using absolute source path definitions to resolve Vercel directory path mapping crashes
+import { aiServices } from '/src/api'; 
 
 function AiAssistant({ courseContext, currentActiveLesson }) {
   const [messages, setMessages] = useState([
@@ -21,13 +21,13 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
     setLoading(true);
 
     try {
-      // Convert state messages into sequential history arrays structured for standard Gemini APIs
+      // Convert UI messages state stack into historical message array blocks matching Gemini SDK inputs
       const structuredHistory = messages.slice(1).map(msg => ({
         sender: msg.isAi ? 'gemini' : 'user',
         text: msg.text
       }));
 
-      // 2. ✅ FIXED: Invoking helper functions correctly with exactly 3 validation map arguments
+      // 2. Call your pre-configured service helper endpoint safely passing exactly 3 map array attributes
       const data = await aiServices.sendMessageToCopilot(
         userMessage,
         structuredHistory,
@@ -36,7 +36,7 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
 
       console.log("Frontend received response object payload:", data);
       
-      // 3. Drill down into custom response elements securely
+      // 3. Extract custom AI message properties securely
       if (data && data.success && data.text) {
         setMessages((prev) => [...prev, { text: data.text, isAi: true }]);
       } else {
