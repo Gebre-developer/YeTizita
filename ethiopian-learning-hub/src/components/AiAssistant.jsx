@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-// 🛠️ REPAIR FIX: Imports the pre-configured aiServices object from your custom api.js file
+// 🛠️ FULLSTACK CLIENT ROUTING FIX: Bridges communication over preconfigured axis layer channels
 import { aiServices } from '../api'; 
 
 function AiAssistant({ courseContext, currentActiveLesson }) {
@@ -21,18 +21,17 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
     setLoading(true);
 
     try {
-      // Convert state messages into history structured payloads for Gemini schema mappings
+      // Convert state messages into sequential history arrays structured for standard Gemini APIs
       const structuredHistory = messages.slice(1).map(msg => ({
         sender: msg.isAi ? 'gemini' : 'user',
         text: msg.text
       }));
 
-      // 2. ✅ FIXED: Calling your pre-configured service method cleanly!
+      // 2. ✅ FIXED: Invoking helper functions correctly with exactly 3 validation map arguments
       const data = await aiServices.sendMessageToCopilot(
         userMessage,
         structuredHistory,
-        courseContext || {},
-        currentActiveLesson || {}
+        courseContext || {}
       );
 
       console.log("Frontend received response object payload:", data);
@@ -81,7 +80,7 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
           )}
         </div>
 
-        {/* Input submission task elements form */}
+        {/* Input submission form elements layout */}
         <form onSubmit={handleSendMessage} className="hub-chat-form">
           <input 
             type="text" 
