@@ -40,10 +40,33 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://ye-tizita.vercel.app", // CORS PRODUCTION FIX: Authorized production client domain
+  "https://ye-tizita.vercel.app", // Fixed Production Whitelist Target
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
+// 🛠️ CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE (Ensures OPTIONS requests return 200 OK)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  // If the browser is sending a preflight check, kill it immediately with a successful 200 status
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Apply standard Express Cors fallback setup safely underneath our custom interceptor
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -60,8 +83,6 @@ app.use(
         ),
       );
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
 );
@@ -254,24 +275,23 @@ app.post("/api/copilot", async (req, res) => {
 
 // --- OPTIMIZED SERVER INITIALIZATION PIPELINE ---
 const startServer = async () => {
-  const PORT = process.env.PORT || 10000; // Instantly defaults cleanly to Render container environment demands
+  const PORT = process.env.PORT || 10000;
 
-  // 1. Start listening on the port IMMEDIATELY to prevent port-binding timing errors
+  // 1. Instantly listen to Render's internal assignment block
   app.listen(PORT, "0.0.0.0", () => {
     console.log(
       `🚀 Express server successfully bound and listening on port ${PORT}`,
     );
 
-    // Auto-pinging tool to protect free instances from sleeping cold-starts
     const selfEndpoint = process.env.BACKEND_PRODUCTION_URL;
     if (selfEndpoint) {
       setInterval(() => {
         fetch(`${selfEndpoint}/api/health`).catch(() => {});
-      }, 840000); // Trigger every 14 minutes
+      }, 840000); // 14 minutes auto awake heartbeat
     }
   });
 
-  // 2. Connect and synchronize schema streams with Neon in the background asynchronously
+  // 2. Connect to database asynchronously in the background layer
   try {
     await sequelize.authenticate();
     console.log(
