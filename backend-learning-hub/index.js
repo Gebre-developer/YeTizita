@@ -40,7 +40,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://vercel.app", // ✨ CORS PRODUCTION FIX: Whitelisted your exact frontend domain
+  "https://ye-tizita.vercel.app", // CORS PRODUCTION FIX: Authorized production client domain
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
@@ -252,37 +252,40 @@ app.post("/api/copilot", async (req, res) => {
   }
 });
 
-// --- SERVER INITIALIZATION PIPELINE ---
+// --- OPTIMIZED SERVER INITIALIZATION PIPELINE ---
 const startServer = async () => {
+  const PORT = process.env.PORT || 10000; // Instantly defaults cleanly to Render container environment demands
+
+  // 1. Start listening on the port IMMEDIATELY to prevent port-binding timing errors
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(
+      `🚀 Express server successfully bound and listening on port ${PORT}`,
+    );
+
+    // Auto-pinging tool to protect free instances from sleeping cold-starts
+    const selfEndpoint = process.env.BACKEND_PRODUCTION_URL;
+    if (selfEndpoint) {
+      setInterval(() => {
+        fetch(`${selfEndpoint}/api/health`).catch(() => {});
+      }, 840000); // Trigger every 14 minutes
+    }
+  });
+
+  // 2. Connect and synchronize schema streams with Neon in the background asynchronously
   try {
     await sequelize.authenticate();
     console.log(
       "🚀 Connected to the Neon PostgreSQL database cluster securely.",
     );
 
-    // Forces dynamic scaling safety configs securely on Render deployment environments
     const isProduction =
       process.env.NODE_ENV === "production" || process.env.RENDER === "true";
     const shouldAlter = !isProduction;
 
     await sequelize.sync({ alter: shouldAlter });
     console.log(`📊 Schema tables synchronized! Alter status: ${shouldAlter}`);
-
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server executing cleanly on port ${PORT}`);
-
-      // Auto pinging tool to protect Render containers from cold-starting sleeps
-      const selfEndpoint = process.env.BACKEND_PRODUCTION_URL;
-      if (selfEndpoint) {
-        setInterval(() => {
-          fetch(`${selfEndpoint}/api/health`).catch(() => {});
-        }, 840000); // Trigger every 14 minutes
-      }
-    });
   } catch (err) {
-    console.error("❌ Critical server bootstrap pipeline crash:", err);
-    process.exit(1);
+    console.error("❌ Database initialization failed post-boot sequence:", err);
   }
 };
 
