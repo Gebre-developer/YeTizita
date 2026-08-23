@@ -4,7 +4,9 @@ const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
-const { GoogleGenAI } = require("@google/genai");
+
+// 🌐 STANDARD GEMINI SDK: Replaced old cloud-dependent library to fix credentials error
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Centralized database configuration instance
 const sequelize = require("./database");
@@ -40,11 +42,11 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://ye-tizita.vercel.app", // Fixed Production Whitelist Target
+  "https://vercel.app",
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
 
-// 🛠️ CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE (Ensures OPTIONS requests return 200 OK)
+// CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
@@ -59,14 +61,12 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
 
-  // If the browser is sending a preflight check, kill it immediately with a successful 200 status
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
   next();
 });
 
-// Apply standard Express Cors fallback setup safely underneath our custom interceptor
 app.use(
   cors({
     origin: (origin, cb) => {
@@ -90,8 +90,8 @@ app.use(
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// AI Client Instantiation
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// AI Client Instantiation using standard API key loading parameters
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Local File Upload Storage Setup
 const uploadDirectory = path.join(__dirname, "uploads", "courses");
@@ -227,6 +227,7 @@ app.post("/api/copilot", async (req, res) => {
         .status(400)
         .json({ success: false, message: "Prompt missing" });
 
+    // Structure conversation elements cleanly into array states for the standard package runtime
     const contents = [];
     if (chatHistory?.length > 0) {
       chatHistory.forEach((m) => {
@@ -259,13 +260,19 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    const response = await ai.models.generateContent({
+    // Initialize the standard generation model pipeline correctly
+    const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      contents,
-      config: { systemInstruction: systemPromptInstruction, temperature: 0.3 },
+      systemInstruction: systemPromptInstruction,
     });
 
-    res.status(200).json({ success: true, text: response.text });
+    const result = await model.generateContent({
+      contents: contents,
+      generationConfig: { temperature: 0.3 },
+    });
+
+    const responseText = result.response.text();
+    res.status(200).json({ success: true, text: responseText });
   } catch (err) {
     res
       .status(500)
@@ -277,7 +284,6 @@ app.post("/api/copilot", async (req, res) => {
 const startServer = async () => {
   const PORT = process.env.PORT || 10000;
 
-  // 1. Instantly listen to Render's internal assignment block
   app.listen(PORT, "0.0.0.0", () => {
     console.log(
       `🚀 Express server successfully bound and listening on port ${PORT}`,
@@ -291,7 +297,6 @@ const startServer = async () => {
     }
   });
 
-  // 2. Connect to database asynchronously in the background layer
   try {
     await sequelize.authenticate();
     console.log(
