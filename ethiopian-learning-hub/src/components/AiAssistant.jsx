@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-// 🎯 FAILSAFE IMPORT FIX: Using absolute source path definitions to resolve Vercel directory path mapping crashes
-import { aiServices } from '/src/api'; 
+// 🎯 FIXED: Changed to a standard relative path so Vercel can compile your directory tree
+import { aiServices } from '../api'; 
 
 function AiAssistant({ courseContext, currentActiveLesson }) {
   const [messages, setMessages] = useState([
@@ -27,11 +27,12 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
         text: msg.text
       }));
 
-      // 2. Call your pre-configured service helper endpoint safely passing exactly 3 map array attributes
+      // 2. Call your pre-configured service helper endpoint safely passing exactly 4 map array attributes
       const data = await aiServices.sendMessageToCopilot(
         userMessage,
         structuredHistory,
-        courseContext || {}
+        courseContext || {},
+        currentActiveLesson || {} // Added missing active lesson reference context payload mapping
       );
 
       console.log("Frontend received response object payload:", data);
