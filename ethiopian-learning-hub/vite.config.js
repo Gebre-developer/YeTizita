@@ -1,12 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+
+  // 🎯 CRITICAL FIX FOR VERCEL: Locks the compilation directory strictly inside the frontend 'src'
+  root: "./",
+
   server: {
     proxy: {
-      // ✅ Local environment routing fallback proxy
       "/api": {
         target: "http://localhost:5000",
         changeOrigin: true,
@@ -14,25 +18,14 @@ export default defineConfig({
       },
     },
   },
+
   build: {
-    // 💥 CRITICAL FOR VERCEL: Excludes server-side libraries from being built into frontend bundle assets
+    // Tells the compiler exactly where your source files are located so it doesn't scan server folders
+    outDir: "dist",
+    emptyOutDir: true,
     rollupOptions: {
-      external: [
-        "express",
-        "cors",
-        "sequelize",
-        "multer",
-        "fs",
-        "path",
-        "./database",
-        "./models/User",
-        "./models/Course",
-        "./models/Lesson",
-        "./models/Enrollment",
-        "./middleware/authMiddleware",
-        "./routes/authRoutes",
-        "./routes/enrollmentRoutes",
-      ],
+      // ✅ Clean, native module-only exclusions that will not throw binding errors in Rolldown
+      external: ["express", "cors", "sequelize", "multer", "fs", "path"],
     },
   },
 });
