@@ -267,11 +267,14 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // 💥 CORRECT SPEC PLACEMENT: systemInstruction is passed directly to getGenerativeModel
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: systemPromptInstruction,
+    });
 
     const result = await model.generateContent({
       contents: contents,
-      systemInstruction: systemPromptInstruction,
       generationConfig: { temperature: 0.3 },
     });
 
@@ -317,5 +320,4 @@ const startServer = async () => {
     console.error("❌ Database initialization failed post-boot sequence:", err);
   }
 };
-
 startServer();
