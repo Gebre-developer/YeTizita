@@ -127,7 +127,6 @@ const enrollmentRouter = require("./routes/enrollmentRoutes");
 
 app.use("/api", authRouter);
 app.use("/api", enrollmentRouter);
-
 // --- CORE SYSTEM ROUTES ---
 app.get("/api/health", (req, res) =>
   res.json({ success: true, status: "healthy" }),
@@ -241,12 +240,12 @@ app.post("/api/copilot", async (req, res) => {
         if (m.sender === "user" || m.sender === "gemini") {
           contents.push({
             role: m.sender === "user" ? "user" : "model",
-            parts: [{ text: m.text }],
+            parts: [{ text: String(m.text) }],
           });
         }
       });
     }
-    contents.push({ role: "user", parts: [{ text: prompt }] });
+    contents.push({ role: "user", parts: [{ text: String(prompt) }] });
 
     const lessonTitle = currentActiveLesson?.title || "General Topic";
     const lessonBody =
@@ -267,9 +266,10 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    // 💥 CORRECT SPEC PLACEMENT: systemInstruction is passed directly to getGenerativeModel
+    // 🎯 REPAIRED STRING MAP: Clean reference block matching absolute model designations
+    const modelName = "gemini-2.5-flash".trim().toLowerCase();
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: modelName,
       systemInstruction: systemPromptInstruction,
     });
 
@@ -278,9 +278,16 @@ app.post("/api/copilot", async (req, res) => {
       generationConfig: { temperature: 0.3 },
     });
 
+    if (!result || !result.response) {
+      throw new Error(
+        "Empty response object generated from Google infrastructure.",
+      );
+    }
+
     const responseText = result.response.text();
     res.status(200).json({ success: true, text: responseText });
   } catch (err) {
+    console.error("Backend Runtime Exception Caught:", err);
     res
       .status(500)
       .json({ success: false, message: "AI error: " + err.message });
@@ -320,4 +327,5 @@ const startServer = async () => {
     console.error("❌ Database initialization failed post-boot sequence:", err);
   }
 };
+
 startServer();
