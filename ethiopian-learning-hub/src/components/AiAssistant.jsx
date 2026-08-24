@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-// 🎯 FIXED: Points accurately to your 'src/services' folder structure visible in your explorer tree
-import { aiServices } from '../services'; 
+// 🎯 FIXED CASE PATH: Explicitly references your 'api.js' file inside the 'services' folder
+import { aiServices } from '../services/api'; 
 
 function AiAssistant({ courseContext, currentActiveLesson }) {
   const [messages, setMessages] = useState([
