@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-// 🎯 FIXED: Changed to a standard relative path so Vercel can compile your directory tree
-import { aiServices } from '../api'; 
+// 🎯 FIXED: Points accurately to your 'src/services' folder structure visible in your explorer tree
+import { aiServices } from '../services'; 
 
 function AiAssistant({ courseContext, currentActiveLesson }) {
   const [messages, setMessages] = useState([
@@ -32,7 +32,7 @@ function AiAssistant({ courseContext, currentActiveLesson }) {
         userMessage,
         structuredHistory,
         courseContext || {},
-        currentActiveLesson || {} // Added missing active lesson reference context payload mapping
+        currentActiveLesson || {} 
       );
 
       console.log("Frontend received response object payload:", data);
