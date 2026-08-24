@@ -1,3 +1,181 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+
+// 🌐 STANDARD GEMINI SDK
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Centralized database configuration instance
+const sequelize = require("./database");
+
+// Database Models
+const User = require("./models/User");
+const Course = require("./models/Course");
+const Lesson = require("./models/Lesson");
+const Enrollment = require("./models/Enrollment");
+
+// Security Middleware Components
+const {
+  authenticateJWT,
+  authorizeRoles,
+} = require("./middleware/authMiddleware");
+
+// Structural Relationships Configurations
+User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
+Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
+Course.hasMany(Lesson, {
+  foreignKey: "courseId",
+  as: "lessons",
+  onDelete: "CASCADE",
+});
+Lesson.belongsTo(Course, { foreignKey: "courseId" });
+User.belongsToMany(Course, { through: Enrollment, foreignKey: "userId" });
+Course.belongsToMany(User, { through: Enrollment, foreignKey: "courseId" });
+
+// 💥 CRITICAL: Initialize the app variable BEFORE any middleware or routes run
+const app = express();
+
+// Allowed Origins List for local and production deployments
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://192.168.137.1:5173",
+  "https://vercel.app",
+  "https://vercel.app",
+  process.env.FRONTEND_PRODUCTION_URL,
+].filter(Boolean);
+
+// 🛠️ CRITICAL PREFLIGHT INTERCEPTOR MIDDLEWARE (Ensures OPTIONS requests return 200 OK)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (
+    origin &&
+    (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app"))
+  ) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  next();
+});
+
+// Apply standard Express Cors fallback setup safely underneath our custom interceptor
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app") ||
+        allowedOrigins.some((o) => origin.startsWith(o))
+      ) {
+        return cb(null, true);
+      }
+      return cb(
+        new Error(
+          `CORS policy rejection: Origin ${origin} not explicitly authorized.`,
+        ),
+      );
+    },
+    credentials: true,
+  }),
+);
+
+app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// AI Client Instantiation using standard API key loading parameters
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Local File Upload Storage Setup
+const uploadDirectory = path.join(__dirname, "uploads", "courses");
+if (!fs.existsSync(uploadDirectory)) {
+  fs.mkdirSync(uploadDirectory, { recursive: true });
+}
+
+const uploadHandler = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDirectory),
+    filename: (req, file, cb) =>
+      cb(null, `course-${Date.now()}${path.extname(file.originalname)}`),
+  }),
+  fileFilter: (req, file, cb) =>
+    [".pdf", ".zip", ".rar"].includes(
+      path.extname(file.originalname).toLowerCase(),
+    )
+      ? cb(null, true)
+      : cb(new Error("Invalid file type.")),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+// --- MOUNT MODULAR API ROUTERS ---
+const authRouter = require("./routes/authRoutes");
+const enrollmentRouter = require("./routes/enrollmentRoutes");
+
+app.use("/api", authRouter);
+app.use("/api", enrollmentRouter);
+
+// --- CORE SYSTEM ROUTES ---
+app.get("/api/health", (req, res) =>
+  res.json({ success: true, status: "healthy" }),
+);
+
+// GET: Fetch Public Course Catalog Directory
+app.get("/api/courses", async (req, res) => {
+  try {
+    const data = await Course.findAll({
+      include: [
+        { model: User, as: "instructor", attributes: ["username"] },
+        { model: Lesson, as: "lessons", attributes: ["id", "title", "order"] },
+      ],
+      order: [
+        ["id", "ASC"],
+        [{ model: Lesson, as: "lessons" }, "order", "ASC"],
+      ],
+    });
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET: Fetch single course workspace including all lessons
+app.get("/api/courses/:id", async (req, res) => {
+  try {
+    const courseData = await Course.findByPk(req.params.id, {
+      include: [
+        { model: User, as: "instructor", attributes: ["username"] },
+        {
+          model: Lesson,
+          as: "lessons",
+          attributes: ["id", "title", "content", "videoUrl", "order"],
+        },
+      ],
+      order: [[{ model: Lesson, as: "lessons" }, "order", "ASC"]],
+    });
+    if (!courseData)
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found." });
+    res.status(200).json({ success: true, data: courseData });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // POST: Course Deployment Endpoint (Instructors only)
 app.post(
   "/api/courses",
@@ -52,13 +230,11 @@ app.post("/api/copilot", async (req, res) => {
   try {
     const { prompt, chatHistory, courseContext, currentActiveLesson } =
       req.body;
-    if (!prompt) {
+    if (!prompt)
       return res
         .status(400)
         .json({ success: false, message: "Prompt missing" });
-    }
 
-    // Structure the conversation history correctly for the standard SDK
     const contents = [];
     if (chatHistory?.length > 0) {
       chatHistory.forEach((m) => {
@@ -91,10 +267,8 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    // Initialize model reference cleanly matching native SDK specs
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Inject systemInstruction directly inside content configuration params to prevent runtime errors
     const result = await model.generateContent({
       contents: contents,
       systemInstruction: systemPromptInstruction,
@@ -109,6 +283,7 @@ app.post("/api/copilot", async (req, res) => {
       .json({ success: false, message: "AI error: " + err.message });
   }
 });
+
 // --- OPTIMIZED SERVER INITIALIZATION PIPELINE ---
 const startServer = async () => {
   const PORT = process.env.PORT || 10000;
