@@ -11,11 +11,16 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Centralized database configuration instance
 const sequelize = require("./database");
 
-// Database Models
+// Database Models - Original Base Core
 const User = require("./models/User");
 const Course = require("./models/Course");
 const Lesson = require("./models/Lesson");
 const Enrollment = require("./models/Enrollment");
+
+// 🚀 DATABASE MODELS - Exam Management Module (Task 4)
+const Exam = require("./models/Exam");
+const Question = require("./models/Question");
+const UserProgress = require("./models/UserProgress");
 
 // Security Middleware Components
 const {
@@ -23,7 +28,7 @@ const {
   authorizeRoles,
 } = require("./middleware/authMiddleware");
 
-// Structural Relationships Configurations
+// Structural Relationships Configurations - Courses & Enrollment Base
 User.hasMany(Course, { foreignKey: "instructorId", onDelete: "CASCADE" });
 Course.belongsTo(User, { foreignKey: "instructorId", as: "instructor" });
 Course.hasMany(Lesson, {
@@ -35,15 +40,23 @@ Lesson.belongsTo(Course, { foreignKey: "courseId" });
 User.belongsToMany(Course, { through: Enrollment, foreignKey: "userId" });
 Course.belongsToMany(User, { through: Enrollment, foreignKey: "courseId" });
 
-// 💥 CRITICAL: Initialize the app variable BEFORE any middleware or routes run
-const app = express();
+// 🚀 STRUCTURAL RELATIONSHIPS CONFIGURATIONS - Exam Layer Engine
+Exam.hasMany(Question, { foreignKey: "exam_id", onDelete: "CASCADE" });
+Question.belongsTo(Exam, { foreignKey: "exam_id" });
 
+User.hasMany(UserProgress, { foreignKey: "user_id", onDelete: "CASCADE" });
+UserProgress.belongsTo(User, { foreignKey: "user_id" });
+
+Exam.hasMany(UserProgress, { foreignKey: "exam_id" });
+UserProgress.belongsTo(Exam, { foreignKey: "exam_id" });
+
+// 💥 CRITICAL INITIALIZATION: Initialize app instance BEFORE executing downstream routing layers
+const app = express();
 // Allowed Origins List for local and production deployments
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://192.168.137.1:5173",
-  "https://vercel.app",
   "https://vercel.app",
   process.env.FRONTEND_PRODUCTION_URL,
 ].filter(Boolean);
@@ -124,9 +137,13 @@ const uploadHandler = multer({
 // --- MOUNT MODULAR API ROUTERS ---
 const authRouter = require("./routes/authRoutes");
 const enrollmentRouter = require("./routes/enrollmentRoutes");
+// 🚀 MOUNT EXAMS ROUTER ENGINE
+const examRoutes = require("./routes/examRoutes");
 
 app.use("/api", authRouter);
 app.use("/api", enrollmentRouter);
+app.use("/api/exams", examRoutes);
+
 // --- CORE SYSTEM ROUTES ---
 app.get("/api/health", (req, res) =>
   res.json({ success: true, status: "healthy" }),
@@ -223,16 +240,16 @@ app.post(
     }
   },
 );
-
-// ✨ THE COPILOT CODE ROUTE IS NOW EXACTLY WHERE IT BELONGS IN YOUR SERVER ROUTING PIPELINE:
+// ✨ COPILOT ENGINE ROUTE
 app.post("/api/copilot", async (req, res) => {
   try {
     const { prompt, chatHistory, courseContext, currentActiveLesson } =
       req.body;
-    if (!prompt)
+    if (!prompt) {
       return res
         .status(400)
         .json({ success: false, message: "Prompt missing" });
+    }
 
     const contents = [];
     if (chatHistory?.length > 0) {
@@ -266,7 +283,6 @@ app.post("/api/copilot", async (req, res) => {
       `2. Keep explanations conversational, brief, structured, and highly accessible to non-native English speakers.\n` +
       `3. If the student asks about something outside this lesson domain context, gently pivot them back to finishing the active chapter.`;
 
-    // 🎯 REPAIRED STRING MAP: Clean reference block matching absolute model designations
     const modelName = "gemini-2.5-flash".trim().toLowerCase();
     const model = genAI.getGenerativeModel({
       model: modelName,
@@ -296,7 +312,7 @@ app.post("/api/copilot", async (req, res) => {
 
 // --- OPTIMIZED SERVER INITIALIZATION PIPELINE ---
 const startServer = async () => {
-  const PORT = process.env.PORT || 10000;
+  const PORT = process.env.PORT || 5000;
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(

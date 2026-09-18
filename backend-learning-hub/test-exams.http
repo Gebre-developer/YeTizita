@@ -1,0 +1,9 @@
+### 1. Test System Health Check
+GET http://localhost:5000/api/health
+Content-Type: application/json
+
+###
+
+### 2. Fetch All Available Exams
+GET http://localhost:5000/api/exams
+Content-Type: application/json
